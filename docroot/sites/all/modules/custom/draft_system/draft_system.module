@@ -368,6 +368,11 @@ function draft_system_generate_draft_seats($draft_nid = 0) {
     $five_by_nine = TRUE;
   }
 
+  $rochester = FALSE;
+  if (isset($draft_node->$rochester['und']) && $draft_node->$rochester['und'][0]['value'] == 1) {
+    $rochester = TRUE;
+  }
+
   $drafters = [];
   foreach ($draft_node->field_players['und'] as $drafter) {
     $drafters[] = $drafter['uid'];
@@ -395,51 +400,75 @@ function draft_system_generate_draft_seats($draft_nid = 0) {
   foreach ($cube_node->field_cube_card['und'] as $cube_card) {
     $cards[] = $cube_card['nid'];
   }
-  $cards_array_keys = array_rand($cards, (count($drafters) * 45));
-  $final_cards_array = [];
-  foreach ($cards_array_keys as $cards_array_key) {
-    $final_cards_array[] = $cards[$cards_array_key];
+  if ($rochester) {
+    //JUST CREATE ONE SINGLE BIG ASS PACK TO ROCHESTER THE WHOLE CUBE
+
+    $pack_node = new StdClass();
+    $pack_node->type = 'draft_pack';
+    node_object_prepare($pack_node);
+    $pack_node->uid = $drafters[0];
+    $pack_node->field_pick_number['und'][0]['value'] = 1;
+    $pack_node->title = 'Rochester Draft ' . $draft_node->nid;
+    $pack_node->language = LANGUAGE_NONE;
+    $pack_node->field_draft_reference['und'][0]['nid'] = $draft_nid;
+
+    foreach ($cards as $pack_card) {
+      $pack_node->field_card['und'][] = [
+        'nid' => $pack_card,
+      ];
+    }
+
+    node_save($pack_node);
+
   }
-  shuffle($final_cards_array);
+  else {
 
-  $card_count = 0;
-  $set_count = 0;
-  $cards = [];
-  $pack_number = 1;
-  foreach ($final_cards_array as $card) {
-    $cards[] = $card;
-    $card_count++;
-    if ($card_count == ($five_by_nine ? 9 : 15)) {
-      $pack_node = new StdClass();
-      $pack_node->type = 'draft_pack';
-      node_object_prepare($pack_node);
-      $pack_node->uid = $drafters[$set_count];
-      $pack_node->title = 'Draft ' . $draft_node->nid . ' Seat ' . ($set_count + 1) . ' Pack ' . $pack_number;
-      $pack_node->language = LANGUAGE_NONE;
-      if ($five_by_nine) {
-        $pack_node->field_pick_number['und'][0]['value'] = ($pack_number == 1 ? 1 : ($pack_number == 2 ? 10 : ($pack_number == 3 ? 19 : ($pack_number == 4 ? 28 : ($pack_number == 5 ? 37 : '')))));
+    $cards_array_keys = array_rand($cards, (count($drafters) * 45));
+    $final_cards_array = [];
+    foreach ($cards_array_keys as $cards_array_key) {
+      $final_cards_array[] = $cards[$cards_array_key];
+    }
+    shuffle($final_cards_array);
+
+    $card_count = 0;
+    $set_count = 0;
+    $cards = [];
+    $pack_number = 1;
+    foreach ($final_cards_array as $card) {
+      $cards[] = $card;
+      $card_count++;
+      if ($card_count == ($five_by_nine ? 9 : 15)) {
+        $pack_node = new StdClass();
+        $pack_node->type = 'draft_pack';
+        node_object_prepare($pack_node);
+        $pack_node->uid = $drafters[$set_count];
+        $pack_node->title = 'Draft ' . $draft_node->nid . ' Seat ' . ($set_count + 1) . ' Pack ' . $pack_number;
+        $pack_node->language = LANGUAGE_NONE;
+        if ($five_by_nine) {
+          $pack_node->field_pick_number['und'][0]['value'] = ($pack_number == 1 ? 1 : ($pack_number == 2 ? 10 : ($pack_number == 3 ? 19 : ($pack_number == 4 ? 28 : ($pack_number == 5 ? 37 : '')))));
+        }
+        else {
+          $pack_node->field_pick_number['und'][0]['value'] = ($pack_number == 1 ? 1 : ($pack_number == 2 ? 16 : ($pack_number == 3 ? 31 : '')));
+        }
+        $pack_node->field_draft_reference['und'][0]['nid'] = $draft_nid;
+
+        foreach ($cards as $pack_card) {
+          $pack_node->field_card['und'][] = [
+            'nid' => $pack_card,
+          ];
+        }
+
+        node_save($pack_node);
+
+        $cards = [];
+        $card_count = 0;
+        $pack_number++;
+        if ($pack_number > ($five_by_nine ? 5 : 3)) {
+          $pack_number = 1;
+          $set_count++;
+        }
+
       }
-      else {
-        $pack_node->field_pick_number['und'][0]['value'] = ($pack_number == 1 ? 1 : ($pack_number == 2 ? 16 : ($pack_number == 3 ? 31 : '')));
-      }
-      $pack_node->field_draft_reference['und'][0]['nid'] = $draft_nid;
-
-      foreach ($cards as $pack_card) {
-        $pack_node->field_card['und'][] = [
-          'nid' => $pack_card,
-        ];
-      }
-
-      node_save($pack_node);
-
-      $cards = [];
-      $card_count = 0;
-      $pack_number++;
-      if ($pack_number > ($five_by_nine ? 5 : 3)) {
-        $pack_number = 1;
-        $set_count++;
-      }
-
     }
   }
 }
