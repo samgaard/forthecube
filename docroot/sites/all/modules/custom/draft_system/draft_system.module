@@ -190,7 +190,13 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
     }
   }
 
-  if ($pick_count == 45) {
+  $draft_node = node_load($draftnid);
+  $rochester = FALSE;
+  if (isset($draft_node->$rochester['und']) && $draft_node->$rochester['und'][0]['value'] == 1) {
+    $rochester = TRUE;
+  }
+
+  if ($pick_count == 45 && !$rochester) {
     return ['content' => '<h2>Draft Complete</h2>', 'packnid' => 'null'];
   }
 
@@ -217,14 +223,23 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
     }
   }
 
-  if (($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value']) {
-    return [
-      'content' => '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $result_node->nid, $draftnid),
-      'packnid' => $pack_node->nid,
-    ];
-  }
-  else {
-    return ['content' => 'no content', 'packnid' => 'null'];
+  if (isset($pack_node->field_pick_number['und'])) {
+    if ($rochester) {
+      $cube_size = $draft_node->field_card_count['und'][0]['value'];
+      if($cube_size  == $pack_node->field_pick_number['und'][0]['value']) {
+        return ['content' => '<h2>Draft Complete</h2>', 'packnid' => 'null'];
+      }
+    }
+
+    if (($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value']) {
+      return [
+        'content' => '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $result_node->nid, $draftnid),
+        'packnid' => $pack_node->nid,
+      ];
+    }
+    else {
+      return ['content' => 'no content', 'packnid' => 'null'];
+    }
   }
 }
 
@@ -438,6 +453,10 @@ function draft_system_generate_draft_seats($draft_nid = 0) {
 
     node_save($pack_node);
 
+    //UPDATE DRAFT NODE WITH TOTAL CARD COUNT
+    $draft_node->field_card_count['und'][0]['value'] = count($cards);
+    node_save($draft_node);
+
   }
   else {
 
@@ -531,6 +550,11 @@ function draft_system_seats_viewer($draftnid) {
     $five_by_nine = TRUE;
   }
 
+  $rochester = FALSE;
+  if (isset($draft_node->$rochester['und']) && $draft_node->$rochester['und'][0]['value'] == 1) {
+    $rochester = TRUE;
+  }
+
   $seats_query = new EntityFieldQuery();
   $seats_query
     ->entityCondition('entity_type', 'node')
@@ -545,6 +569,9 @@ function draft_system_seats_viewer($draftnid) {
 
       if ($five_by_nine) {
         $pack_number = ($pick_number < 10 ? 1 : ($pick_number < 19 ? 2 : ($pick_number < 28 ? 3 : ($pick_number < 37 ? 4 : 5))));
+      }
+      elseif ($rochester) {
+        $pack_number = 1;
       }
       else {
         $pack_number = ($pick_number < 16 ? 1 : ($pick_number < 31 ? 2 : 3));
@@ -561,9 +588,11 @@ function draft_system_seats_viewer($draftnid) {
         ->entityCondition('entity_type', 'node')
         ->entityCondition('bundle', 'draft_pack')
         ->propertyCondition('uid', $seat_node->uid)
-        ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=')
-        ->fieldCondition('field_pick_number', 'value', ($pack_number * ($five_by_nine ? 9 : 15)), '<=')
-        ->fieldOrderBy('field_pick_number', 'value', 'ASC');
+        ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=');
+      if(!$rochester) {
+        $query->fieldCondition('field_pick_number', 'value', ($pack_number * ($five_by_nine ? 9 : 15)), '<=');
+        $query->fieldOrderBy('field_pick_number', 'value', 'ASC');
+      }
       $pack_count = $query->count()->execute();
       $profile_info .= '<div>Pending Packs: ' . $pack_count . '</div>';
       $pack_dots = '';
