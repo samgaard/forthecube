@@ -4,415 +4,444 @@
  * Implements hook_menu().
  */
 function draft_system_menu() {
-	$items = array();
-	
-  $items['js/draft-pick'] = array(
+  $items = [];
+
+  $items['js/draft-pick'] = [
     'title' => t('test'),
     'page callback' => 'draft_system_draft_pick_js',
-  	'access callback' => TRUE,
+    'access callback' => TRUE,
     'type' => MENU_CALLBACK,
-    );
-	
-  $items['js/get-next-pack'] = array(
+  ];
+
+  $items['js/get-next-pack'] = [
     'title' => t('test'),
     'page callback' => 'draft_system_get_next_pack_js',
-  	'access callback' => TRUE,
+    'access callback' => TRUE,
     'type' => MENU_CALLBACK,
-    );
-	
-  $items['js/get-seat-viewer'] = array(
+  ];
+
+  $items['js/get-seat-viewer'] = [
     'title' => t('test'),
     'page callback' => 'draft_system_seat_viewer_js',
-  	'access callback' => TRUE,
+    'access callback' => TRUE,
     'type' => MENU_CALLBACK,
-    );
-	
-  $items['js/draft-viewer'] = array(
+  ];
+
+  $items['js/draft-viewer'] = [
     'title' => t('test'),
     'page callback' => 'draft_system_draft_viewer_js',
-  	'access callback' => TRUE,
+    'access callback' => TRUE,
     'type' => MENU_CALLBACK,
-    );
-	
-  $items['draft-viewer/%/%/%'] = array(
+  ];
+
+  $items['draft-viewer/%/%/%'] = [
     'title' => t('Draft Viewer'),
     'page callback' => 'draft_system_draft_viewer',
-		'page arguments' => array(1,2,3),
-  	'access callback' => TRUE,
-		'type' => MENU_LOCAL_TASK,
-    );
-	
+    'page arguments' => [1, 2, 3],
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  ];
+
   return $items;
 }
 
 function draft_system_seat_viewer_js() {
-	$seats = draft_system_seats_viewer($_POST['draftnid']);
-	drupal_json_output(array('status' => 1, 'content' => $seats));
+  $seats = draft_system_seats_viewer($_POST['draftnid']);
+  drupal_json_output(['status' => 1, 'content' => $seats]);
 }
 
 function draft_system_get_next_pack_js() {
-	$pack = draft_system_get_next_pack($_POST['draftnid'], $_POST['drafteruid']);
-	drupal_json_output(array('status' => 1, 'content' => $pack['content'], 'packnid' => $pack['packnid'], 'draftnid' => $_POST['draftnid'], 'drafteruid' => $_POST['drafteruid']));
+  $pack = draft_system_get_next_pack($_POST['draftnid'], $_POST['drafteruid']);
+  drupal_json_output([
+    'status' => 1,
+    'content' => $pack['content'],
+    'packnid' => $pack['packnid'],
+    'draftnid' => $_POST['draftnid'],
+    'drafteruid' => $_POST['drafteruid'],
+  ]);
 }
 
 function draft_system_draft_pick_js() {
-	$content = draft_system_pick_card($_POST['cardnid'], $_POST['packnid'], $_POST['drafteruid']);
-	drupal_json_output(array('status' => 1, 'content' => $content, 'draftnid' => $_POST['draftnid'], 'drafteruid' => $_POST['drafteruid']));
+  $content = draft_system_pick_card($_POST['cardnid'], $_POST['packnid'], $_POST['drafteruid']);
+  drupal_json_output([
+    'status' => 1,
+    'content' => $content,
+    'draftnid' => $_POST['draftnid'],
+    'drafteruid' => $_POST['drafteruid'],
+  ]);
 }
 
 function draft_system_draft_viewer_js() {
-	$content = draft_system_draft_viewer($_POST['draftid'], $_POST['seatid'], $_POST['picknumber']);
-	drupal_json_output(array('status' => 1, 'content' => $content['content'], 'packnid' => $content['packnid'], 'seatid' => $content['seatid'], 'picknumber' => $content['picknumber'], 'picknid' => $content['picknid']));
+  $content = draft_system_draft_viewer($_POST['draftid'], $_POST['seatid'], $_POST['picknumber']);
+  drupal_json_output([
+    'status' => 1,
+    'content' => $content['content'],
+    'packnid' => $content['packnid'],
+    'seatid' => $content['seatid'],
+    'picknumber' => $content['picknumber'],
+    'picknid' => $content['picknid'],
+  ]);
 }
 
-function draft_system_draft_viewer($draftid, $seatnumber, $picknumber) { 
-	$content = '';
-	
-	if($picknumber > 1) {
-		$content .= '<a id="draft-viewer-back-button" class="btn btn-primary" href="javascript:void(0);" onclick="picksViewer(' . $draftid . ', ' . $seatnumber . ', ' . ($picknumber-1) . ');">Back</a>';
-	}
-	if($picknumber < 45) {
-		$content .= '<a id="draft-viewer-forward-button" class="btn btn-primary" href="javascript:void(0);" onclick="picksViewer(' . $draftid . ', ' . $seatnumber . ', ' . ($picknumber+1) . ');">Forward</a>';
-	}
+function draft_system_draft_viewer($draftid, $seatnumber, $picknumber) {
+  $content = '';
 
-	$draft_node = node_load($draftid);
+  if ($picknumber > 1) {
+    $content .= '<a id="draft-viewer-back-button" class="btn btn-primary" href="javascript:void(0);" onclick="picksViewer(' . $draftid . ', ' . $seatnumber . ', ' . ($picknumber - 1) . ');">Back</a>';
+  }
+  if ($picknumber < 45) {
+    $content .= '<a id="draft-viewer-forward-button" class="btn btn-primary" href="javascript:void(0);" onclick="picksViewer(' . $draftid . ', ' . $seatnumber . ', ' . ($picknumber + 1) . ');">Forward</a>';
+  }
 
-	$seatnid = db_query("SELECT nid FROM {node} WHERE LOWER(title) = :title", array(":title" => trim(strtolower('Draft ' . $draftid . ' Seat ' . $seatnumber))))->fetchField();
-	$seat_node = node_load($seatnid);
-	$seat_revisions = node_revision_list($seat_node);
+  $draft_node = node_load($draftid);
 
-	$seat_picks = '';
-	$seat_picks_delimeter = '';
-	foreach($seat_revisions as $seat_revision) {
-		if($seat_picks != '') {
-			continue;
-		}
-		$seatlogdata = explode('|', $seat_revision->log);
-		if($seatlogdata != '') {
-			if(str_replace('pick:', '', $seatlogdata[0]) == $picknumber) {
-				$seat_revision_node = node_load($seatnid, $seat_revision->vid);
-				$packnid = str_replace('packnid:', '', $seatlogdata[3]);
-				foreach ($seat_revision_node->field_seat_picks['und'] as $seat_card) {
-					if(str_replace('card:', '', $seatlogdata[2]) != $seat_card['nid']) {
-						$seat_picks .= $seat_picks_delimeter . $seat_card['nid'];
-						$seat_picks_delimeter = '+';
-					}
-				}
-			}
-		}
-	}
-	
-	
-	$this_seats_picks = ($seat_picks != '' ? '<h2>Picks</h2>' . views_embed_view('draft_pack', 'page_1', $seat_picks) : '');
-	
-	
-	$pack_node = node_load($packnid);
-	$revisions = node_revision_list($pack_node);
+  $seatnid = db_query("SELECT nid FROM {node} WHERE LOWER(title) = :title", [":title" => trim(strtolower('Draft ' . $draftid . ' Seat ' . $seatnumber))])->fetchField();
+  $seat_node = node_load($seatnid);
+  $seat_revisions = node_revision_list($seat_node);
 
-	$picks = '';
-	$picks_delimeter = '';
-	
-	foreach($revisions as $revision) {
-		if($picks != '') {
-			continue;
-		}
-		$logdata = explode('|', $revision->log);
-		if($logdata != '') {
-			if(str_replace('pick:', '', $logdata[0]) == $picknumber) {
-				$revision_node = node_load($packnid, $revision->vid);
-				foreach ($revision_node->field_card['und'] as $card) {
-					$picks .= $picks_delimeter . $card['nid'];
-					$picks_delimeter = '+';
-				}
-				$picked_card_nid = str_replace('card:', '', $logdata[2]);
-				
-				$picks .= $picks_delimeter . $picked_card_nid;
-			}
-		}
-	}
-	
-	$content .=  '<h2>Draft ' . $draftid . ' Seat ' . $seatnumber . ' Pick ' . $picknumber . '</h2>' . views_embed_view('p1p1', 'default', $picks);
-	
-	$content .= $this_seats_picks;
-		
-	/*
-	print $content;
-	*/
-	return array(
-		'content' => $content,
-		'packnid' => $packnid,
-		'seatid' => $seatnumber,
-		'picknumber' => $picknumber,
-		'picknid' => $picked_card_nid
-	);
+  $seat_picks = '';
+  $seat_picks_delimeter = '';
+  foreach ($seat_revisions as $seat_revision) {
+    if ($seat_picks != '') {
+      continue;
+    }
+    $seatlogdata = explode('|', $seat_revision->log);
+    if ($seatlogdata != '') {
+      if (str_replace('pick:', '', $seatlogdata[0]) == $picknumber) {
+        $seat_revision_node = node_load($seatnid, $seat_revision->vid);
+        $packnid = str_replace('packnid:', '', $seatlogdata[3]);
+        foreach ($seat_revision_node->field_seat_picks['und'] as $seat_card) {
+          if (str_replace('card:', '', $seatlogdata[2]) != $seat_card['nid']) {
+            $seat_picks .= $seat_picks_delimeter . $seat_card['nid'];
+            $seat_picks_delimeter = '+';
+          }
+        }
+      }
+    }
+  }
+
+
+  $this_seats_picks = ($seat_picks != '' ? '<h2>Picks</h2>' . views_embed_view('draft_pack', 'page_1', $seat_picks) : '');
+
+
+  $pack_node = node_load($packnid);
+  $revisions = node_revision_list($pack_node);
+
+  $picks = '';
+  $picks_delimeter = '';
+
+  foreach ($revisions as $revision) {
+    if ($picks != '') {
+      continue;
+    }
+    $logdata = explode('|', $revision->log);
+    if ($logdata != '') {
+      if (str_replace('pick:', '', $logdata[0]) == $picknumber) {
+        $revision_node = node_load($packnid, $revision->vid);
+        foreach ($revision_node->field_card['und'] as $card) {
+          $picks .= $picks_delimeter . $card['nid'];
+          $picks_delimeter = '+';
+        }
+        $picked_card_nid = str_replace('card:', '', $logdata[2]);
+
+        $picks .= $picks_delimeter . $picked_card_nid;
+      }
+    }
+  }
+
+  $content .= '<h2>Draft ' . $draftid . ' Seat ' . $seatnumber . ' Pick ' . $picknumber . '</h2>' . views_embed_view('p1p1', 'default', $picks);
+
+  $content .= $this_seats_picks;
+
+  /*
+  print $content;
+  */
+  return [
+    'content' => $content,
+    'packnid' => $packnid,
+    'seatid' => $seatnumber,
+    'picknumber' => $picknumber,
+    'picknid' => $picked_card_nid,
+  ];
 }
 
 function draft_system_get_next_pack($draftnid, $drafteruid) {
-	$picks_query = new EntityFieldQuery();
-	$picks_query
-	 ->entityCondition('entity_type', 'node')
-	 ->entityCondition('bundle', 'draft_seat')
-	 ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=')
-	 ->propertyCondition('uid', $drafteruid);
-	$picks_results = $picks_query->execute();	
-	if (isset($picks_results['node'])) {
-		foreach($picks_results['node'] as $picks_results_node) {
-			$picks_node = node_load($picks_results_node->nid);
-		}
-	}
-	
-	$pick_count = 0;
-	$picks = '';
-	$picks_delimeter = '';
-	if(isset($picks_node->field_seat_picks['und'])) {
-		$pick_count = count($picks_node->field_seat_picks['und']);
-		foreach($picks_node->field_seat_picks['und'] as $pick_info) {
-			$picks .= $picks_delimeter . $pick_info['nid'];
-			$picks_delimeter = '+';
-		}
-	}
-	
-	if($pick_count == 45) {
-		return array('content' => '<h2>Draft Complete</h2>', 'packnid' => 'null');
-	}
+  $picks_query = new EntityFieldQuery();
+  $picks_query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'draft_seat')
+    ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=')
+    ->propertyCondition('uid', $drafteruid);
+  $picks_results = $picks_query->execute();
+  if (isset($picks_results['node'])) {
+    foreach ($picks_results['node'] as $picks_results_node) {
+      $picks_node = node_load($picks_results_node->nid);
+    }
+  }
 
-	$query = new EntityFieldQuery();
-	$query
-	 ->entityCondition('entity_type', 'node')
-	 ->entityCondition('bundle', 'draft_pack')
-	 ->propertyCondition('uid', $drafteruid)
-	 ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=')
-	 ->fieldOrderBy('field_pick_number', 'value', 'ASC')
-	 ->range(0, 1);
-	$result = $query->execute();
-	$cards = '';
-	$delimeter = '';
-	if (isset($result['node'])) {
-		foreach($result['node'] as $result_node) {
-			$pack_node = node_load($result_node->nid);
-			if(isset($pack_node->field_card['und'])) {
-				foreach($pack_node->field_card['und'] as $card_info) {
-					$cards .= $delimeter . $card_info['nid'];
-					$delimeter = '+';
-				}
-			}
-		}
-	}
-	
-	if(($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value']) {
-		return array(
-			'content' => '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $result_node->nid, $draftnid),
-			'packnid' => $pack_node->nid
-		);
-	} else {
-		return array('content' => 'no content', 'packnid' => 'null');
-	}
+  $pick_count = 0;
+  $picks = '';
+  $picks_delimeter = '';
+  if (isset($picks_node->field_seat_picks['und'])) {
+    $pick_count = count($picks_node->field_seat_picks['und']);
+    foreach ($picks_node->field_seat_picks['und'] as $pick_info) {
+      $picks .= $picks_delimeter . $pick_info['nid'];
+      $picks_delimeter = '+';
+    }
+  }
+
+  if ($pick_count == 45) {
+    return ['content' => '<h2>Draft Complete</h2>', 'packnid' => 'null'];
+  }
+
+  $query = new EntityFieldQuery();
+  $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'draft_pack')
+    ->propertyCondition('uid', $drafteruid)
+    ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=')
+    ->fieldOrderBy('field_pick_number', 'value', 'ASC')
+    ->range(0, 1);
+  $result = $query->execute();
+  $cards = '';
+  $delimeter = '';
+  if (isset($result['node'])) {
+    foreach ($result['node'] as $result_node) {
+      $pack_node = node_load($result_node->nid);
+      if (isset($pack_node->field_card['und'])) {
+        foreach ($pack_node->field_card['und'] as $card_info) {
+          $cards .= $delimeter . $card_info['nid'];
+          $delimeter = '+';
+        }
+      }
+    }
+  }
+
+  if (($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value']) {
+    return [
+      'content' => '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $result_node->nid, $draftnid),
+      'packnid' => $pack_node->nid,
+    ];
+  }
+  else {
+    return ['content' => 'no content', 'packnid' => 'null'];
+  }
 }
 
 function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
-	if($cardnid == 0) {
-		drupal_set_message("You need the NID of a card to pick.");
-		drupal_goto();
-		return false;
-	} else {
-		$pack_node = node_load($packnid);
-		
-		if($pack_node->uid != $drafteruid) {
-			return array('content' => 'error', 'packnid' => 'null');
-		}
-		
-		$draft_nid = $pack_node->field_draft_reference['und'][0]['nid'];
-		$draft_node = node_load($draft_nid);
+  if ($cardnid == 0) {
+    drupal_set_message("You need the NID of a card to pick.");
+    drupal_goto();
+    return FALSE;
+  }
+  else {
+    $pack_node = node_load($packnid);
 
-		$five_by_nine = FALSE;
-		if(isset($draft_node->field_5x9['und']) && $draft_node->field_5x9['und'][0]['value'] == 1) {
-			$five_by_nine = TRUE;
-		}
-	
-		$query = new EntityFieldQuery();
-		$query
-		 ->entityCondition('entity_type', 'node')
-		 ->entityCondition('bundle', 'draft_seat')
-		 ->fieldCondition('field_draft_reference', 'nid', $draft_nid, '=')
-		 ->propertyCondition('uid', $pack_node->uid);
-		$result = $query->execute();
-		if (isset($result['node'])) {
-			foreach($result['node'] as $seat_info) {
-				$seat = node_load($seat_info->nid);
-				$picked = 0;
-				foreach($seat->field_seat_picks['und'] as $picknid) {
-					if($picknid == $cardnid) {
-						$picked = 1;
-					}
-				}
-				if($picked == 0) {
-					$seat->field_seat_picks['und'][] = array('nid' => $cardnid);
-					$seat->revision = 1;
-					$seat->log = t('pick:' . $pack_node->field_pick_number['und'][0]['value'] . '|user:' . $pack_node->uid . '|card:' . $cardnid . '|packnid:' . $packnid);
-					node_save($seat);
-				}
-				$seat_number = $seat->field_seatnumber['und'][0]['value'];
-			}
-		}
-		
-		$seat_count_query = new EntityFieldQuery();
-		$seat_count_query
-		 ->entityCondition('entity_type', 'node')
-		 ->entityCondition('bundle', 'draft_seat')
-		 ->fieldCondition('field_draft_reference', 'nid', $draft_nid, '=');
-		$seat_count = $seat_count_query->count()->execute();
+    if ($pack_node->uid != $drafteruid) {
+      return ['content' => 'error', 'packnid' => 'null'];
+    }
 
-		$pick_number = $pack_node->field_pick_number['und'][0]['value'];
-		if($five_by_nine) {
-			if(($pick_number > 9 && $pick_number < 19) || ($pick_number > 27 && $pick_number < 37)) {
-				$seat_number--;
-				$seat_number = ($seat_number > 0 ? $seat_number : $seat_count);
-			} else {
-				$seat_number++;
-				$seat_number = ($seat_number <= $seat_count ? $seat_number : 1);
-			}
-		} else {
-			if($pick_number > 15 && $pick_number < 31) {
-				$seat_number--;
-				$seat_number = ($seat_number > 0 ? $seat_number : $seat_count);
-			} else {
-				$seat_number++;
-				$seat_number = ($seat_number <= $seat_count ? $seat_number : 1);
-			}
-		}
-		
-		$new_seat_query = new EntityFieldQuery();
-		$new_seat_query
-		 ->entityCondition('entity_type', 'node')
-		 ->entityCondition('bundle', 'draft_seat')
-		 ->fieldCondition('field_draft_reference', 'nid', $draft_nid, '=')
-		 ->fieldCondition('field_seatnumber', 'value', $seat_number, '=');
-		$new_seat_result = $new_seat_query->execute();
-		if (isset($new_seat_result['node'])) {
-			foreach($new_seat_result['node'] as $new_seat_result_node) {
-				$passing_info = array('uid' => node_load($new_seat_result_node->nid)->uid, 'seat' => $seat_number);
-			}
-		}
-	
-		$pack_node->revision = 1;
-  	$pack_node->log = t('pick:' . $pack_node->field_pick_number['und'][0]['value'] . '|user:' . $pack_node->uid . '|card:' . $cardnid . '|packnid:' . $packnid);
+    $draft_nid = $pack_node->field_draft_reference['und'][0]['nid'];
+    $draft_node = node_load($draft_nid);
 
-		$pack_node->uid = $passing_info['uid'];
-		foreach($pack_node->field_card['und'] as $key => $card_info) {
-			if($card_info['nid'] == $cardnid) {
-				unset($pack_node->field_card['und'][$key]);
-			}
-		}	
-		if($five_by_nine) {
-			$endnumbers = array(9, 18, 27, 36, 45);
-		} else {
-			$endnumbers = array(15, 30, 45);
-		}
-		if(in_array($pack_node->field_pick_number['und'][0]['value'], $endnumbers)) {
-			$pack_node->field_pick_number['und'][0]['value'] = 99;
-		} else {
-			$pack_node->field_pick_number['und'][0]['value']++;
-		}
-		
-		node_save($pack_node);
-		
-		$draft_ref_node = node_load($draft_nid);
-		$draft_ref_node_view = node_view($draft_ref_node);
-		
-		return drupal_render($draft_ref_node_view);
-	}
+    $five_by_nine = FALSE;
+    if (isset($draft_node->field_5x9['und']) && $draft_node->field_5x9['und'][0]['value'] == 1) {
+      $five_by_nine = TRUE;
+    }
+
+    $query = new EntityFieldQuery();
+    $query
+      ->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', 'draft_seat')
+      ->fieldCondition('field_draft_reference', 'nid', $draft_nid, '=')
+      ->propertyCondition('uid', $pack_node->uid);
+    $result = $query->execute();
+    if (isset($result['node'])) {
+      foreach ($result['node'] as $seat_info) {
+        $seat = node_load($seat_info->nid);
+        $picked = 0;
+        foreach ($seat->field_seat_picks['und'] as $picknid) {
+          if ($picknid == $cardnid) {
+            $picked = 1;
+          }
+        }
+        if ($picked == 0) {
+          $seat->field_seat_picks['und'][] = ['nid' => $cardnid];
+          $seat->revision = 1;
+          $seat->log = t('pick:' . $pack_node->field_pick_number['und'][0]['value'] . '|user:' . $pack_node->uid . '|card:' . $cardnid . '|packnid:' . $packnid);
+          node_save($seat);
+        }
+        $seat_number = $seat->field_seatnumber['und'][0]['value'];
+      }
+    }
+
+    $seat_count_query = new EntityFieldQuery();
+    $seat_count_query
+      ->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', 'draft_seat')
+      ->fieldCondition('field_draft_reference', 'nid', $draft_nid, '=');
+    $seat_count = $seat_count_query->count()->execute();
+
+    $pick_number = $pack_node->field_pick_number['und'][0]['value'];
+    if ($five_by_nine) {
+      if (($pick_number > 9 && $pick_number < 19) || ($pick_number > 27 && $pick_number < 37)) {
+        $seat_number--;
+        $seat_number = ($seat_number > 0 ? $seat_number : $seat_count);
+      }
+      else {
+        $seat_number++;
+        $seat_number = ($seat_number <= $seat_count ? $seat_number : 1);
+      }
+    }
+    else {
+      if ($pick_number > 15 && $pick_number < 31) {
+        $seat_number--;
+        $seat_number = ($seat_number > 0 ? $seat_number : $seat_count);
+      }
+      else {
+        $seat_number++;
+        $seat_number = ($seat_number <= $seat_count ? $seat_number : 1);
+      }
+    }
+
+    $new_seat_query = new EntityFieldQuery();
+    $new_seat_query
+      ->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', 'draft_seat')
+      ->fieldCondition('field_draft_reference', 'nid', $draft_nid, '=')
+      ->fieldCondition('field_seatnumber', 'value', $seat_number, '=');
+    $new_seat_result = $new_seat_query->execute();
+    if (isset($new_seat_result['node'])) {
+      foreach ($new_seat_result['node'] as $new_seat_result_node) {
+        $passing_info = [
+          'uid' => node_load($new_seat_result_node->nid)->uid,
+          'seat' => $seat_number,
+        ];
+      }
+    }
+
+    $pack_node->revision = 1;
+    $pack_node->log = t('pick:' . $pack_node->field_pick_number['und'][0]['value'] . '|user:' . $pack_node->uid . '|card:' . $cardnid . '|packnid:' . $packnid);
+
+    $pack_node->uid = $passing_info['uid'];
+    foreach ($pack_node->field_card['und'] as $key => $card_info) {
+      if ($card_info['nid'] == $cardnid) {
+        unset($pack_node->field_card['und'][$key]);
+      }
+    }
+    if ($five_by_nine) {
+      $endnumbers = [9, 18, 27, 36, 45];
+    }
+    else {
+      $endnumbers = [15, 30, 45];
+    }
+    if (in_array($pack_node->field_pick_number['und'][0]['value'], $endnumbers)) {
+      $pack_node->field_pick_number['und'][0]['value'] = 99;
+    }
+    else {
+      $pack_node->field_pick_number['und'][0]['value']++;
+    }
+
+    node_save($pack_node);
+
+    $draft_ref_node = node_load($draft_nid);
+    $draft_ref_node_view = node_view($draft_ref_node);
+
+    return drupal_render($draft_ref_node_view);
+  }
 }
 
 function draft_system_node_insert($node) {
-	if($node->type == 'draft') {
-		draft_system_generate_draft_seats($node->nid);
-	}
+  if ($node->type == 'draft') {
+    draft_system_generate_draft_seats($node->nid);
+  }
 }
 
 function draft_system_generate_draft_seats($draft_nid = 0) {
-	$draft_node = node_load($draft_nid);
-	if($draft_nid == 0 || !isset($draft_node->field_players['und'])) {
-		return false;
-	}
-	
+  $draft_node = node_load($draft_nid);
+  if ($draft_nid == 0 || !isset($draft_node->field_players['und'])) {
+    return FALSE;
+  }
+
   $five_by_nine = FALSE;
-  if(isset($draft_node->field_5x9['und']) && $draft_node->field_5x9['und'][0]['value'] == 1) {
+  if (isset($draft_node->field_5x9['und']) && $draft_node->field_5x9['und'][0]['value'] == 1) {
     $five_by_nine = TRUE;
   }
 
-  $drafters = array();
-	foreach($draft_node->field_players['und'] as $drafter) {
-		$drafters[] = $drafter['uid'];
-	}
-	shuffle($drafters);
+  $drafters = [];
+  foreach ($draft_node->field_players['und'] as $drafter) {
+    $drafters[] = $drafter['uid'];
+  }
+  shuffle($drafters);
 
-	$seat_number = 1;
-	foreach($drafters as $drafter_uid) {
-		$draft_seat_node = new StdClass();
-		$draft_seat_node->type = 'draft_seat';
-		node_object_prepare($draft_seat_node);
-		$draft_seat_node->uid = $drafter_uid;
-		$draft_seat_node->title = 'Draft ' . $draft_node->nid . ' Seat ' . $seat_number;
-		$draft_seat_node->language = LANGUAGE_NONE;
+  $seat_number = 1;
+  foreach ($drafters as $drafter_uid) {
+    $draft_seat_node = new StdClass();
+    $draft_seat_node->type = 'draft_seat';
+    node_object_prepare($draft_seat_node);
+    $draft_seat_node->uid = $drafter_uid;
+    $draft_seat_node->title = 'Draft ' . $draft_node->nid . ' Seat ' . $seat_number;
+    $draft_seat_node->language = LANGUAGE_NONE;
 
-		$draft_seat_node->field_draft_reference['und'][0]['nid'] = $draft_nid;
-		$draft_seat_node->field_seatnumber['und'][0]['value'] = $seat_number;
+    $draft_seat_node->field_draft_reference['und'][0]['nid'] = $draft_nid;
+    $draft_seat_node->field_seatnumber['und'][0]['value'] = $seat_number;
 
-		$seat_number++;
-	  node_save($draft_seat_node);
-	}
-	
-	$cube_node = node_load(15888);
-	$cards = array();
-	foreach($cube_node->field_cube_card['und'] as $cube_card) {
-		$cards[] = $cube_card['nid'];
-	}
-	$cards_array_keys = array_rand($cards, (count($drafters) * 45));
-	$final_cards_array = array();
-	foreach($cards_array_keys as $cards_array_key) {
-		$final_cards_array[] = $cards[$cards_array_key];
-	}
-	shuffle($final_cards_array);
+    $seat_number++;
+    node_save($draft_seat_node);
+  }
 
-	$card_count = 0;
-	$set_count = 0;
-	$cards = array();
-	$pack_number = 1;
-	foreach($final_cards_array as $card) {
-		$cards[] = $card;
-		$card_count++;
-		if($card_count == ($five_by_nine ? 9 : 15)) {
-			$pack_node = new StdClass();
-			$pack_node->type = 'draft_pack';
-			node_object_prepare($pack_node);
-			$pack_node->uid = $drafters[$set_count];
-			$pack_node->title = 'Draft ' . $draft_node->nid . ' Seat ' . ($set_count +1) . ' Pack ' . $pack_number;
-			$pack_node->language = LANGUAGE_NONE;
-			if($five_by_nine) {
-				$pack_node->field_pick_number['und'][0]['value'] = ($pack_number == 1 ? 1 : ($pack_number == 2 ? 10 : ($pack_number == 3 ? 19 : ($pack_number == 4 ? 28 : ($pack_number == 5 ? 37 : '')))));
-			} else {
-				$pack_node->field_pick_number['und'][0]['value'] = ($pack_number == 1 ? 1 : ($pack_number == 2 ? 16 : ($pack_number == 3 ? 31 : '')));
-			}
-			$pack_node->field_draft_reference['und'][0]['nid'] = $draft_nid;
+  $cube_node = node_load(15888);
+  $cards = [];
+  foreach ($cube_node->field_cube_card['und'] as $cube_card) {
+    $cards[] = $cube_card['nid'];
+  }
+  $cards_array_keys = array_rand($cards, (count($drafters) * 45));
+  $final_cards_array = [];
+  foreach ($cards_array_keys as $cards_array_key) {
+    $final_cards_array[] = $cards[$cards_array_key];
+  }
+  shuffle($final_cards_array);
 
-			foreach($cards as $pack_card) {
-				$pack_node->field_card['und'][] = array(
-					'nid' => $pack_card
-				);
-			}
+  $card_count = 0;
+  $set_count = 0;
+  $cards = [];
+  $pack_number = 1;
+  foreach ($final_cards_array as $card) {
+    $cards[] = $card;
+    $card_count++;
+    if ($card_count == ($five_by_nine ? 9 : 15)) {
+      $pack_node = new StdClass();
+      $pack_node->type = 'draft_pack';
+      node_object_prepare($pack_node);
+      $pack_node->uid = $drafters[$set_count];
+      $pack_node->title = 'Draft ' . $draft_node->nid . ' Seat ' . ($set_count + 1) . ' Pack ' . $pack_number;
+      $pack_node->language = LANGUAGE_NONE;
+      if ($five_by_nine) {
+        $pack_node->field_pick_number['und'][0]['value'] = ($pack_number == 1 ? 1 : ($pack_number == 2 ? 10 : ($pack_number == 3 ? 19 : ($pack_number == 4 ? 28 : ($pack_number == 5 ? 37 : '')))));
+      }
+      else {
+        $pack_node->field_pick_number['und'][0]['value'] = ($pack_number == 1 ? 1 : ($pack_number == 2 ? 16 : ($pack_number == 3 ? 31 : '')));
+      }
+      $pack_node->field_draft_reference['und'][0]['nid'] = $draft_nid;
 
-			node_save($pack_node);
+      foreach ($cards as $pack_card) {
+        $pack_node->field_card['und'][] = [
+          'nid' => $pack_card,
+        ];
+      }
 
-			$cards = array();
-			$card_count = 0;
-			$pack_number++;
-			if($pack_number > ($five_by_nine ? 5 : 3)) {
-				$pack_number = 1;
-				$set_count++;
-			}
+      node_save($pack_node);
 
-		}
-	}
+      $cards = [];
+      $card_count = 0;
+      $pack_number++;
+      if ($pack_number > ($five_by_nine ? 5 : 3)) {
+        $pack_number = 1;
+        $set_count++;
+      }
+
+    }
+  }
 }
 
 /*
@@ -443,72 +472,73 @@ function draft_system_block_view($delta = '') {
 */
 
 function draft_system_seats_viewer($draftnid) {
-	
-	$content = '';
-	$content .= '<div id="draft-seats-wrapper">';
-	$content .= '<h2>Draft Seats</h2>';
-	
-	$draft_node = node_load($draftnid);
 
-	$five_by_nine = FALSE;
-	if(isset($draft_node->field_5x9['und']) && $draft_node->field_5x9['und'][0]['value'] == 1) {
-		$five_by_nine = TRUE;
-	}
-	
-	$seats_query = new EntityFieldQuery();
-	$seats_query
-	 ->entityCondition('entity_type', 'node')
-	 ->entityCondition('bundle', 'draft_seat')
-	 ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=')
-	 ->fieldOrderBy('field_seatnumber', 'value', 'ASC');
-	$seats_results = $seats_query->execute();	
-	if (isset($seats_results['node'])) {
-		foreach($seats_results['node'] as $seats_results_node) {
-			$seat_node = node_load($seats_results_node->nid);
-			$pick_number = (isset($seat_node->field_seat_picks['und']) ? count($seat_node->field_seat_picks['und']) + 1 : 1);
+  $content = '';
+  $content .= '<div id="draft-seats-wrapper">';
+  $content .= '<h2>Draft Seats</h2>';
 
-			if($five_by_nine) {
-				$pack_number = ($pick_number < 10 ? 1 : ($pick_number < 19 ? 2 : ($pick_number < 28 ? 3 : ($pick_number < 37 ? 4 : 5))));
-			} else {
-				$pack_number = ($pick_number < 16 ? 1 : ($pick_number < 31 ? 2 : 3));
-			}
+  $draft_node = node_load($draftnid);
 
-			$account = user_load($seat_node->uid);			
-			$picture = (isset($account->picture->uri) ? $account->picture->uri : 'sites/default/files/profile_pics/default_user_icon.jpg');
-			$profile_info  = '';
-			$profile_info .= '<div>' . (isset($account->field_first_name['und'][0]) ? $account->field_first_name['und'][0]['value'] : $account->name) . '</div>';
-			$profile_info .= '<div>Seat Number: ' . $seat_node->field_seatnumber['und'][0]['value'] . '</div>';
-			
-			$query = new EntityFieldQuery();
-			$query
-			 ->entityCondition('entity_type', 'node')
-			 ->entityCondition('bundle', 'draft_pack')
-			 ->propertyCondition('uid', $seat_node->uid)
-			 ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=')
-			 ->fieldCondition('field_pick_number', 'value', ($pack_number * ($five_by_nine ? 9 : 15)), '<=')
-			 ->fieldOrderBy('field_pick_number', 'value', 'ASC');
-			$pack_count = $query->count()->execute();
-			$profile_info .= '<div>Pending Packs: ' . $pack_count. '</div>';
-			$pack_dots = '';
-			for($i=0; $i<$pack_count; $i++) {
-				$pack_dots .= '<div class="pack-dot">&nbsp;</div>';
-			}
-			
-			$content .= '<div class="drafter-wrapper">';
-			$content .= '<div class="pack-dots-wrapper">' . $pack_dots . '</div>';
-			$content .= '<a class="user-picture" data-original-title="' . $profile_info . '" data-html="true" data-placement="right" href="#" data-toggle="tooltip" title="">' . theme('image', array('path' => $picture)) . '</a>';
-			$content .= '</div>';
-		}
-	}
-	$content .= '</div>';
+  $five_by_nine = FALSE;
+  if (isset($draft_node->field_5x9['und']) && $draft_node->field_5x9['und'][0]['value'] == 1) {
+    $five_by_nine = TRUE;
+  }
 
-	$content .= "<script>
+  $seats_query = new EntityFieldQuery();
+  $seats_query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'draft_seat')
+    ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=')
+    ->fieldOrderBy('field_seatnumber', 'value', 'ASC');
+  $seats_results = $seats_query->execute();
+  if (isset($seats_results['node'])) {
+    foreach ($seats_results['node'] as $seats_results_node) {
+      $seat_node = node_load($seats_results_node->nid);
+      $pick_number = (isset($seat_node->field_seat_picks['und']) ? count($seat_node->field_seat_picks['und']) + 1 : 1);
+
+      if ($five_by_nine) {
+        $pack_number = ($pick_number < 10 ? 1 : ($pick_number < 19 ? 2 : ($pick_number < 28 ? 3 : ($pick_number < 37 ? 4 : 5))));
+      }
+      else {
+        $pack_number = ($pick_number < 16 ? 1 : ($pick_number < 31 ? 2 : 3));
+      }
+
+      $account = user_load($seat_node->uid);
+      $picture = (isset($account->picture->uri) ? $account->picture->uri : 'sites/default/files/profile_pics/default_user_icon.jpg');
+      $profile_info = '';
+      $profile_info .= '<div>' . (isset($account->field_first_name['und'][0]) ? $account->field_first_name['und'][0]['value'] : $account->name) . '</div>';
+      $profile_info .= '<div>Seat Number: ' . $seat_node->field_seatnumber['und'][0]['value'] . '</div>';
+
+      $query = new EntityFieldQuery();
+      $query
+        ->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'draft_pack')
+        ->propertyCondition('uid', $seat_node->uid)
+        ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=')
+        ->fieldCondition('field_pick_number', 'value', ($pack_number * ($five_by_nine ? 9 : 15)), '<=')
+        ->fieldOrderBy('field_pick_number', 'value', 'ASC');
+      $pack_count = $query->count()->execute();
+      $profile_info .= '<div>Pending Packs: ' . $pack_count . '</div>';
+      $pack_dots = '';
+      for ($i = 0; $i < $pack_count; $i++) {
+        $pack_dots .= '<div class="pack-dot">&nbsp;</div>';
+      }
+
+      $content .= '<div class="drafter-wrapper">';
+      $content .= '<div class="pack-dots-wrapper">' . $pack_dots . '</div>';
+      $content .= '<a class="user-picture" data-original-title="' . $profile_info . '" data-html="true" data-placement="right" href="#" data-toggle="tooltip" title="">' . theme('image', ['path' => $picture]) . '</a>';
+      $content .= '</div>';
+    }
+  }
+  $content .= '</div>';
+
+  $content .= "<script>
 	jQuery( document ).ready(function() {
 		layoutdraftseats();
 	});
 	</script>";
 
-	return $content;
+  return $content;
 }
 
 /*
@@ -577,68 +607,68 @@ function draft_system_form_alter(&$form, &$form_state, $form_id) { //print_r($fo
 */
 
 function draft_system_picks_viewer($node, $uid) {
-	$picks_query = new EntityFieldQuery();
-	$picks_query
-	 ->entityCondition('entity_type', 'node')
-	 ->entityCondition('bundle', 'draft_seat')
-	 ->fieldCondition('field_draft_reference', 'nid', $node->nid, '=');
-	$picks_results = $picks_query->execute();	
-	$seat_options = array();
-	if (isset($picks_results['node'])) {
-		foreach($picks_results['node'] as $picks_results_node) {
-			$result_node = node_load($picks_results_node->nid);
-			$seat_options[$result_node->field_seatnumber['und'][0]['value']] = str_replace('Draft ' . $node->nid . ' ', '', $result_node->title) . ' - ' . user_load($result_node->uid)->name;
-			if($result_node->uid == $uid) {
-				$picks_node = node_load($picks_results_node->nid);
-			}
-		}
-	}
+  $picks_query = new EntityFieldQuery();
+  $picks_query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'draft_seat')
+    ->fieldCondition('field_draft_reference', 'nid', $node->nid, '=');
+  $picks_results = $picks_query->execute();
+  $seat_options = [];
+  if (isset($picks_results['node'])) {
+    foreach ($picks_results['node'] as $picks_results_node) {
+      $result_node = node_load($picks_results_node->nid);
+      $seat_options[$result_node->field_seatnumber['und'][0]['value']] = str_replace('Draft ' . $node->nid . ' ', '', $result_node->title) . ' - ' . user_load($result_node->uid)->name;
+      if ($result_node->uid == $uid) {
+        $picks_node = node_load($picks_results_node->nid);
+      }
+    }
+  }
 
-	$pick_options = array();
-/*	
+  $pick_options = [];
+  /*
 
-	foreach(node_revision_list($picks_node) as $revision) {
-		if($revision->log != '') {
-			$log = explode('|', $revision->log);
-			$pick_options[$revision->vid] = 'Pick ' . str_replace('pick:', '', $log[0]);
-		}
-	}
-	
-	ksort($pick_options);
-		
-*/
-	for($i=1; $i<46; $i++) {
-		$pick_options[$i] = $i;
-	}
+    foreach(node_revision_list($picks_node) as $revision) {
+      if($revision->log != '') {
+        $log = explode('|', $revision->log);
+        $pick_options[$revision->vid] = 'Pick ' . str_replace('pick:', '', $log[0]);
+      }
+    }
 
-	$form = array();
-	
-	$form['seat_number'] = array(
-		'#type' => 'select',
-		'#title' => t('Seat Number'),
-		'#options' => $seat_options,
-		'#attributes' => array(
-			'id' => 'seat_number'
-		)		
-	);
-	
-	$form['pick_number'] = array(
-		'#type' => 'select',
-		'#title' => t('Pick Number'),
-		'#options' => $pick_options,
-		'#attributes' => array(
-			'id' => 'pick_number'
-		)		
-	);
-	
-	$form['submit'] = array(
+    ksort($pick_options);
+
+  */
+  for ($i = 1; $i < 46; $i++) {
+    $pick_options[$i] = $i;
+  }
+
+  $form = [];
+
+  $form['seat_number'] = [
+    '#type' => 'select',
+    '#title' => t('Seat Number'),
+    '#options' => $seat_options,
+    '#attributes' => [
+      'id' => 'seat_number',
+    ],
+  ];
+
+  $form['pick_number'] = [
+    '#type' => 'select',
+    '#title' => t('Pick Number'),
+    '#options' => $pick_options,
+    '#attributes' => [
+      'id' => 'pick_number',
+    ],
+  ];
+
+  $form['submit'] = [
     '#type' => 'submit',
     '#value' => t('Submit'),
-		'#attributes' => array(
-			'onclick' => 'picksViewer('.$node->nid.', jQuery("#seat_number").val(), jQuery("#pick_number").val()); return false;'
-		)
-  );
+    '#attributes' => [
+      'onclick' => 'picksViewer(' . $node->nid . ', jQuery("#seat_number").val(), jQuery("#pick_number").val()); return false;',
+    ],
+  ];
 
-	
-	return '<h2>Picks Viewer</h2>' . drupal_render($form);
+
+  return '<h2>Picks Viewer</h2>' . drupal_render($form);
 }
