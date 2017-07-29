@@ -241,12 +241,19 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
       return ['content' => 'error', 'packnid' => 'null'];
     }
 
+    $pick_number = $pack_node->field_pick_number['und'][0]['value'];
+
     $draft_nid = $pack_node->field_draft_reference['und'][0]['nid'];
     $draft_node = node_load($draft_nid);
 
     $five_by_nine = FALSE;
     if (isset($draft_node->field_5x9['und']) && $draft_node->field_5x9['und'][0]['value'] == 1) {
       $five_by_nine = TRUE;
+    }
+
+    $rochester = FALSE;
+    if (isset($draft_node->$rochester['und']) && $draft_node->$rochester['und'][0]['value'] == 1) {
+      $rochester = TRUE;
     }
 
     $query = new EntityFieldQuery();
@@ -268,7 +275,7 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
         if ($picked == 0) {
           $seat->field_seat_picks['und'][] = ['nid' => $cardnid];
           $seat->revision = 1;
-          $seat->log = t('pick:' . $pack_node->field_pick_number['und'][0]['value'] . '|user:' . $pack_node->uid . '|card:' . $cardnid . '|packnid:' . $packnid);
+          $seat->log = t('pick:' . $pick_number . '|user:' . $pack_node->uid . '|card:' . $cardnid . '|packnid:' . $packnid);
           node_save($seat);
         }
         $seat_number = $seat->field_seatnumber['und'][0]['value'];
@@ -282,25 +289,31 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
       ->fieldCondition('field_draft_reference', 'nid', $draft_nid, '=');
     $seat_count = $seat_count_query->count()->execute();
 
-    $pick_number = $pack_node->field_pick_number['und'][0]['value'];
-    if ($five_by_nine) {
-      if (($pick_number > 9 && $pick_number < 19) || ($pick_number > 27 && $pick_number < 37)) {
-        $seat_number--;
-        $seat_number = ($seat_number > 0 ? $seat_number : $seat_count);
-      }
-      else {
-        $seat_number++;
-        $seat_number = ($seat_number <= $seat_count ? $seat_number : 1);
-      }
+
+    if ($rochester) {
+      $seat_number++;
+      $seat_number = ($seat_number <= $seat_count ? $seat_number : 1);
     }
     else {
-      if ($pick_number > 15 && $pick_number < 31) {
-        $seat_number--;
-        $seat_number = ($seat_number > 0 ? $seat_number : $seat_count);
+      if ($five_by_nine) {
+        if (($pick_number > 9 && $pick_number < 19) || ($pick_number > 27 && $pick_number < 37)) {
+          $seat_number--;
+          $seat_number = ($seat_number > 0 ? $seat_number : $seat_count);
+        }
+        else {
+          $seat_number++;
+          $seat_number = ($seat_number <= $seat_count ? $seat_number : 1);
+        }
       }
       else {
-        $seat_number++;
-        $seat_number = ($seat_number <= $seat_count ? $seat_number : 1);
+        if ($pick_number > 15 && $pick_number < 31) {
+          $seat_number--;
+          $seat_number = ($seat_number > 0 ? $seat_number : $seat_count);
+        }
+        else {
+          $seat_number++;
+          $seat_number = ($seat_number <= $seat_count ? $seat_number : 1);
+        }
       }
     }
 
@@ -321,7 +334,7 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
     }
 
     $pack_node->revision = 1;
-    $pack_node->log = t('pick:' . $pack_node->field_pick_number['und'][0]['value'] . '|user:' . $pack_node->uid . '|card:' . $cardnid . '|packnid:' . $packnid);
+    $pack_node->log = t('pick:' . $pick_number . '|user:' . $pack_node->uid . '|card:' . $cardnid . '|packnid:' . $packnid);
 
     $pack_node->uid = $passing_info['uid'];
     foreach ($pack_node->field_card['und'] as $key => $card_info) {
@@ -329,11 +342,16 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
         unset($pack_node->field_card['und'][$key]);
       }
     }
-    if ($five_by_nine) {
-      $endnumbers = [9, 18, 27, 36, 45];
+    if ($rochester) {
+      $endnumbers = [];
     }
     else {
-      $endnumbers = [15, 30, 45];
+      if ($five_by_nine) {
+        $endnumbers = [9, 18, 27, 36, 45];
+      }
+      else {
+        $endnumbers = [15, 30, 45];
+      }
     }
     if (in_array($pack_node->field_pick_number['und'][0]['value'], $endnumbers)) {
       $pack_node->field_pick_number['und'][0]['value'] = 99;
@@ -495,7 +513,7 @@ function draft_system_block_view($delta = '') {
 		break;
 		}
 	$block['content'] = $content;
-	
+
   return $block;
 }
 */
@@ -577,12 +595,12 @@ function draft_system_generate_picks($nid = 0, $uid = 0, $pick = NULL) {
 		drupal_goto();
 		return false;
 	}
-	
+
 	global $user;
 	$node = node_load($nid);
-		
+
 	$content  = '';
-	
+
 	if(isset($pick)) {
 		$my_collection = entity_create('field_collection_item', array('field_name' => 'field_pick'));
 		$my_collection->setHostEntity('node', $node);
@@ -590,14 +608,14 @@ function draft_system_generate_picks($nid = 0, $uid = 0, $pick = NULL) {
 		$my_collection->field_draft_uid[$node->language][0] = array('value' => $_POST['uid']);
 		$my_collection->save();
 	}
-	
+
 	$already_picked = array();
 	if(isset($node->field_pick['und'])) {
 		foreach($node->field_pick['und'] as $picked_pick) {
 			$already_picked[] = entity_load_single('field_collection_item', $picked_pick['value'])->field_draft_pick_id['und'][0]['value'];
 		}
 	}
-	
+
 	$current_pack = $node->field_draft_current_pack['und'][0]['value'];
 	$current_pick = $node->field_current_pick['und'][0]['value'];
 
@@ -607,9 +625,9 @@ function draft_system_generate_picks($nid = 0, $uid = 0, $pick = NULL) {
 		$user_seating[$seat->field_seating_player['und'][0]['uid']] = $seat->field_seat_number['und'][0]['value'];
 	}
 	$seat_number = ($user_seating[$user->uid] - 1);
-	
+
 	$draft_set_calc = ($current_pick > count($user_seating) ? $current_pick - count($user_seating) : ($current_pick - 1));
-	
+
 	$draft_set = field_collection_item_load($node->field_draft_sets['und'][$draft_set_calc]['value']);
 	$draft_pack = field_collection_item_load($draft_set->field_packs['und'][($seat_number + $current_pack)]['value']);
 
@@ -620,9 +638,9 @@ function draft_system_generate_picks($nid = 0, $uid = 0, $pick = NULL) {
 			$content .= l($image, 'javascript:void(0);', array('external' => TRUE, 'html' => TRUE, 'attributes' => array('onclick' => 'draftpick('.$card['nid'].','.$user->uid.','.$node->nid.')')));
 		}
 	}
-	
+
 	node_save($node);
-	
+
 	return $content;
 }
 
