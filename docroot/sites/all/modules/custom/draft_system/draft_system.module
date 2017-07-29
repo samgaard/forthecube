@@ -192,7 +192,7 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
 
   $draft_node = node_load($draftnid);
   $rochester = FALSE;
-  if (isset($draft_node->$rochester['und']) && $draft_node->$rochester['und'][0]['value'] == 1) {
+  if (isset($draft_node->field_rochester['und']) && $draft_node->field_rochester['und'][0]['value'] == 1) {
     $rochester = TRUE;
   }
 
@@ -267,7 +267,7 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
     }
 
     $rochester = FALSE;
-    if (isset($draft_node->$rochester['und']) && $draft_node->$rochester['und'][0]['value'] == 1) {
+    if (isset($draft_node->field_rochester['und']) && $draft_node->field_rochester['und'][0]['value'] == 1) {
       $rochester = TRUE;
     }
 
@@ -402,7 +402,7 @@ function draft_system_generate_draft_seats($draft_nid = 0) {
   }
 
   $rochester = FALSE;
-  if (isset($draft_node->$rochester['und']) && $draft_node->$rochester['und'][0]['value'] == 1) {
+  if (isset($draft_node->field_rochester['und']) && $draft_node->field_rochester['und'][0]['value'] == 1) {
     $rochester = TRUE;
   }
 
@@ -551,7 +551,7 @@ function draft_system_seats_viewer($draftnid) {
   }
 
   $rochester = FALSE;
-  if (isset($draft_node->$rochester['und']) && $draft_node->$rochester['und'][0]['value'] == 1) {
+  if (isset($draft_node->field_rochester['und']) && $draft_node->field_rochester['und'][0]['value'] == 1) {
     $rochester = TRUE;
   }
 
