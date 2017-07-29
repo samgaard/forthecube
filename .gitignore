@@ -34,3 +34,8 @@ xmlrpc.php
 /profiles
 /scripts
 /themes
+
+
+.idea
+_notes
+.DS_Store
