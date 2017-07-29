@@ -1,0 +1,6 @@
+name = draft_system
+description = "sytem for drafting"
+core = 7.x
+
+project = "draft_system"
+

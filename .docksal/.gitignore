@@ -1,0 +1,4 @@
+.idea
+*.yml~
+.DS_Store
+docksal.yml

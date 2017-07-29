@@ -1,0 +1,9 @@
+name = mtg_helper
+description = "The goal of this plugin is to help you writing articels about Magic: the Gathering like tournament reports or draft walkthroughs and reducing the time you need for posting decks and link cards to their picture. All this stuff is taken care of by the plugin and that's not the enf of it. MtG-Helper does not only link cards for you it also creates good looking deck lists, sealed pools and booster drafts. The only thing you have to do is typ in the cards. If you still not convinced, take a look at the screenshots."
+core = 7.x
+
+; Information added by drupal.org packaging script on 2013-01-31
+version = "7.x"
+core = "7.x"
+project = "mtg_helper"
+

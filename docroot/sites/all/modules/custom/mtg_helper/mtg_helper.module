@@ -1,0 +1,1195 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function mtg_helper_menu() {
+	$items = array();
+	
+	$items['node/%node/p1p1'] = array(
+		'title' => t('P1P1'),
+		'page callback' => 'mtg_helper_p1p1',
+		'page arguments' => array(1),
+		'access callback' => 'mtg_helper_p1p1_check',
+		'access arguments' => array(1),
+		'type' => MENU_LOCAL_TASK,
+	);
+	
+	$items['node/%node/p1p1/feed'] = array(
+		'title' => t('P1P1 Feed'),
+		'page callback' => 'mtg_helper_p1p1_feed',
+		'page arguments' => array(1),
+		'access callback' => 'mtg_helper_p1p1_check',
+		'access arguments' => array(1),
+		'type' => MENU_LOCAL_TASK,
+	);
+	
+	$items['node/%node/visual'] = array(
+		'title' => t('Visual'),
+		'page callback' => 'mtg_helper_visual_decklist',
+		'page arguments' => array(1),
+		'access callback' => 'mtg_helper_constructed_check',
+		'access arguments' => array(1),
+		'type' => MENU_LOCAL_TASK,
+	);
+	
+  $items['js/test'] = array(
+    'title' => t('test'),
+    'page callback' => 'mtg_helper_test_js',
+  	'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+    );
+	
+  return $items;
+}
+
+function mtg_helper_test_js() {
+	$content = 'test';
+	drupal_json_output(array('status' => 1, 'content' => $content));
+}
+
+function mtg_helper_constructed_check($node) {
+	return (isset($node->field_format) && in_array($node->field_format['und'][0]['tid'], array(192, 195, 193, 196)) ? TRUE : FALSE); //standard, modern, legacy, limited
+}
+
+function cmp($a, $b) {
+ return $a['cmc'] - $b['cmc'];
+}
+
+function mtg_helper_visual_decklist($node) {
+	$content = '';
+	
+	
+	$content .= '<div class="main-deck-wrapper">';
+	$cards = array();
+	foreach($node->field_main_deck[$node->language] as $entity) {
+		
+		$line = entity_load_single('field_collection_item', $entity['value']);
+		$quantity = $line->field_quantity['und'][0]['value'];
+		$card = $line->field_card['und'][0]['nid'];
+		$card_node = node_load($card);	
+		
+		$types = array();
+		$terms = $card_node->field_type[$card_node->language];
+		foreach ($terms as $type) {
+			$types[] = taxonomy_term_load($type['tid'])->name;
+		}
+		
+		$card = '';
+		$card_type = (in_array('Land', $types) ? 'land' : (in_array('Creature', $types) ? 'creature' : 'non-creature'));
+		$card_cmc = (isset($card_node->field_cmc[$card_node->language]) ? $card_node->field_cmc[$card_node->language][0]['value'] : '');
+		
+		$art = entity_load_single('field_collection_item', $card_node->field_art['und'][0]['value']);
+		$image = $art->field_full_image[$node->language][0]['uri'];
+		
+		$card .= '<div class="card-pile col-xs-6 col-sm-4 col-md-2 cmc-' . $card_cmc . '">';
+		if($quantity <= 4) {
+			for($i=0; $i<$quantity; $i++) {
+				$card .= theme('image', array('path' => $image, 'attributes' => array('class' => 'img-responsive' . ($i ? ' duplicate duplicate-' . $i : ''))));
+			}
+		} else {
+				$card .= '<div class="big-quantity">' . $quantity . '</div>' . theme('image', array('path' => $image, 'attributes' => array('class' => 'img-responsive')));
+		}
+		$card .= '</div>';
+		$cards[$card_type][] = array(
+			'card' => $card,
+			'cmc' => $card_cmc,
+		);
+	}
+	
+	usort($cards['creature'], "cmp");
+	usort($cards['non-creature'], "cmp");
+
+	$dudes = array();
+	foreach($cards['creature'] as $dude) {
+		$dudes[] = $dude['card'];
+	}
+	$nondudes = array();
+	foreach($cards['non-creature'] as $nondude) {
+		$nondudes[] = $nondude['card'];
+	}
+	$lands = array();
+	foreach($cards['land'] as $land) {
+		$lands[] = $land['card'];
+	}
+	
+
+	$content .= implode('', $dudes);
+	$content .= implode('', $nondudes);
+	$content .= implode('', $lands);
+	
+	
+	$content .= '</div>';
+
+	if(isset($node->field_sideboard[$node->language])) {
+		$content .= '<div class="sideboard-wrapper"><h2 class="title">Sideboard</h2>';
+		foreach($node->field_sideboard[$node->language] as $entity) {
+			$line = entity_load_single('field_collection_item', $entity['value']);
+			$quantity = $line->field_quantity['und'][0]['value'];
+			$card = $line->field_card['und'][0]['nid'];
+			$art = entity_load_single('field_collection_item', node_load($card)->field_art['und'][0]['value']);
+			$image = $art->field_full_image[$node->language][0]['uri'];
+			$content .= '<div class="card-pile col-xs-6 col-sm-4 col-md-2">';
+			if($quantity <= 4) {
+				for($i=0;$i<$quantity;$i++) {
+					$content .= theme('image', array('path' => $image, 'attributes' => array('class' => 'img-responsive' . ($i ? ' duplicate duplicate-' . $i : ''))));
+				}
+			} else {
+					$content .= '<div class="big-quantity">' . $quantity . '</div>' . theme('image', array('path' => $image, 'attributes' => array('class' => 'img-responsive' . ($i ? ' duplicate duplicate-' . $i : ''))));
+			}
+			$content .= '</div>';
+		}
+	}
+	$content .= '</div>';
+
+	return $content;
+}
+
+function mtg_helper_p1p1_check($node) {
+	return (isset($node->type) && $node->type == 'cube' ? TRUE : FALSE);
+}
+
+function mtg_helper_p1p1_feed($node) {
+	foreach($node->field_cube_card['und'] as $card) {
+		$nids[] = $card['nid'];
+	}
+	$random_ids = array_rand($nids, 15);
+	$random_id_array = array();
+	foreach($random_ids as $random_id) {
+		$random_id_array[] = $nids[$random_id];
+	}
+	echo json_encode($random_id_array);
+	exit();
+}
+
+
+function mtg_helper_p1p1($node) {
+	foreach($node->field_cube_card['und'] as $card) {
+		$nids[] = $card['nid'];
+	}
+	$random_ids = array_rand($nids, 15);
+	$random_id_array = array();
+	foreach($random_ids as $random_id) {
+		$random_id_array[] = $nids[$random_id];
+	}
+	return views_embed_view('p1p1', 'default', implode('+', $random_id_array)) . '<h2>Create Post</h2>' . l('Click Here', 'node/add/forum', array('query' => array('p1p1' => 1, 'data' => implode('+', $random_id_array))));
+}
+
+function mtgh_card($content) {
+	$preload = '';
+	$result = array();
+
+	preg_match_all('/(\[CARD([^\]]*)\])(.*)(\[\/CARD\])/iU', $content, $result);
+		
+	if(isset($result[0][0]) && $result[0][0] != '') {
+		$result[2] = trim($result[2][0]);
+		if (strlen($result[2]) == 0) {
+			$result[2] = $result[3];
+		}
+		$preload = cache_cards($result[2]);
+	}
+
+	$content = preg_replace_callback('/(\[CARD([^\]]*)\])(.*)(\[\/CARD\])/iU', 'parse_card_url', $content);
+	
+ 	return '<a title="" data-toggle="tooltip" href="#" data-placement="right" data-html="true" data-original-title="'.$preload.'">'.$content.'</a>';
+
+	//return '<span class="autocard-wrapper">' . $content.$preload . '</span>';
+}
+
+function parse_card_url($card_names){
+	$card_names[2] = trim($card_names[2]);
+	if (strlen($card_names[2]) == 0) {
+		$card_names[2] = $card_names[3];
+	}
+	return $card_names[3];
+	//return '<a class="card-link" href="' . mtg_helper_autocard_url(str_replace("&#039;", "'", $card_names[2])) . '" name="'.$card_names[3].'">' . $card_names[3] . '</a>';
+}
+
+
+
+function mtg_helper_autocard_url($name) {
+	global $base_url;
+	$query = new EntityFieldQuery();
+	$query
+	 ->entityCondition('entity_type', 'node')
+	 ->entityCondition('bundle', 'card')
+	 ->propertyCondition('title', $name)
+	 ->propertyCondition('status', 1)
+	 ->propertyOrderBy('created', 'DESC');
+	$result = $query->execute();
+	if (isset($result['node'])) {
+		$card_nid = array_keys($result['node']);
+		$card = entity_load('node', $card_nid);
+		foreach($card as $card_info) {
+			if(isset($card_info->field_art['und'])) {
+				$art = entity_load('field_collection_item', array($card_info->field_art['und'][0]['value']));
+				foreach($art as $art_info) {
+					return str_replace($base_url, '', file_create_url($art_info->field_full_image['und'][0]['uri']));
+				}
+			}
+		}
+	}
+}
+
+//preloading the cards for a better look
+function cache_cards($names){
+	$images = array();
+	if(is_string($names)){
+		$src = mtg_helper_autocard_url(str_replace("&#039;", "'", $names));
+		if($src != '') {
+			$images[] = "<img class='img-responsive' src='" . mtg_helper_autocard_url(str_replace("&#039;", "'", $names)) . "' />";
+		}
+	} else {
+		foreach ($names as $cardname){
+		$src = mtg_helper_autocard_url(str_replace("&#039;", "'", $cardname));
+		if($src != '') {
+			$images[] = "<img class='img-responsive' src='" . mtg_helper_autocard_url(str_replace("&#039;", "'", $cardname)) . "' />";
+		}
+		}
+	}
+
+	return (count($images) == 0 ? '<p>' . t('Card not found.') . '</p>' : implode("",$images));
+}
+
+function mtg_helper_node_view($node, $view_mode, $langcode) {
+  if ($node->type == 'list') {
+		$cube = 0;
+		if($node->field_format[$node->language][0]['taxonomy_term']->name == 'Cube') {
+			$cube = 1;
+		} else {
+			$cards = array();
+			foreach($node->field_main_deck[$node->language] as $entity) {
+				$card = entity_load_single('field_collection_item', $entity['value']);
+				$cards[] = $card->field_quantity[$node->language][0]['value'] . ' ' . node_load($card->field_card[$node->language][0]['nid'])->title;
+			}
+			if(count($cards)) {
+				$markup = ($cube ? nl2br(implode("\n", $cards)) : substr(nl2br(mtg_helper_card_tagger(mtg_helper_deck_tagger("[DECK]<br />\n" . implode("\n", $cards) . '[/DECK]'))), 6));
+				$node->content['field_main_deck'] = array(
+					'#markup' => '<div class="field field-name-field-notes field-type-text-long field-label-above"><div class="field-label">' . t('Main Deck') . ':&nbsp;</div><div class="field-items"><div class="field-item even">' . $markup . '</div></div></div>',
+					'#weight' => 0
+				);
+			}
+			$cards = array();
+			if(isset($node->field_sideboard[$node->language])) {
+				foreach($node->field_sideboard[$node->language] as $entity) {
+					$card = entity_load_single('field_collection_item', $entity['value']);
+					$cards[] = $card->field_quantity[$node->language][0]['value'] . ' ' . node_load($card->field_card[$node->language][0]['nid'])->title;
+				}
+			}
+			if(count($cards)) {
+				$markup = substr(nl2br(mtg_helper_card_tagger(mtg_helper_deck_tagger("[DECK]<br />\n" . implode("\n", $cards) . '[/DECK]'))), 6);
+				$node->content['field_sideboard'] = array(
+					'#markup' => '<div class="field field-name-field-notes field-type-text-long field-label-above"><div class="field-label">' . t('Sideboard') . ':&nbsp;</div><div class="field-items"><div class="field-item even">' . $markup . '</div></div></div>',
+					'#weight' => 1
+				);
+			}
+		}
+	}
+}
+
+function mtg_helper_node_view_alter(&$build) {
+	if(in_array($build['#node']->type, array('forum', 'poll', 'card'))) {
+		if(isset($build['body'])) {
+			$build['body'][0]['#markup'] = mtg_helper_quote_tagger(mtg_helper_draftdeck_tagger(mtg_helper_picks_tagger(mtg_helper_mana_symbol_filter(mtg_helper_card_tagger(mtg_helper_deck_tagger(mtg_helper_img_tag_filter($build['body'][0]['#markup'])))))));
+		}
+		if(isset($build['field_mana_cost'])) {
+			$build['field_mana_cost'][0]['#markup'] = mtg_helper_mana_symbol_filter($build['field_mana_cost'][0]['#markup']);
+		}
+		if(isset($build['field_ability'])) {
+			$build['field_ability'][0]['#markup'] = mtg_helper_mana_symbol_filter($build['field_ability'][0]['#markup']);
+		}
+	}
+}
+
+function mtg_helper_img_tag_filter($element) {
+	$result = array();
+	preg_match_all('/\[IMG\](.*?)\[\/IMG\]/s', $element, $result);
+	$count = count($result[0]);
+	if($count > 0) {
+		for($i=0; $i<=$count; $i++) {
+			if(isset($result[0][$i])) {
+				$element = str_replace($result[0][$i], theme('image', array('path' => $result[1][$i])), $element);
+			}
+		}
+	}
+	return $element;
+}
+
+function mtg_helper_mana_symbol_filter($element) {
+	$result = array();
+	preg_match_all('/({)(.*)(})/iU', $element, $results);
+	if(isset($results[0][0])) {
+		foreach($results[0] as $result) {
+			$symbol = str_replace(array('{', '}'), array('',''), $result);
+			$color = mtg_helper_mana_symbol_lookup($symbol);
+			if(isset($color[0])) {
+				$mana = theme('image_style', array('style_name' => 'mana_symbol', 'path' => 'mana/'.$color[0].'_mana.png'));
+				$element = str_replace($result, $mana, $element);
+			}
+		}
+	}
+	return $element;
+}
+
+function mtg_helper_mana_symbol_lookup($symbol) {
+	switch ($symbol) {
+    case 'R':
+			return array('Red');
+			break;
+    case 'U':
+			return array('Blue');
+			break;
+    case 'G':
+			return array('Green');
+			break;
+    case 'B':
+			return array('Black');
+			break;
+    case 'W':
+			return array('White');
+			break;
+    case 'PR':
+			return array('phyrexian_red');
+			break;
+    case 'PU':
+			return array('phyrexian_blue');
+			break;
+    case 'PG':
+			return array('phyrexian_green');
+			break;
+    case 'PB':
+			return array('phyrexian_black');
+			break;
+    case 'PW':
+			return array('phyrexian_white');
+			break;
+		default:
+			return false;
+			break;
+	}
+}
+
+function mtg_helper_comment_view_alter(&$build) {	
+	$build['comment_body'][0]['#markup'] = mtg_helper_quote_tagger(mtg_helper_draftdeck_tagger(mtg_helper_picks_tagger(mtg_helper_mana_symbol_filter(mtg_helper_card_tagger(mtg_helper_deck_tagger(mtg_helper_img_tag_filter($build['comment_body'][0]['#markup'])))))));
+}
+
+function mtg_helper_deck_tagger($temp_body) {
+	$result = array();
+	preg_match_all('/\[DECK\](.*)\[\/DECK\]/s', $temp_body, $result);
+	if(isset($result[0][0])) {
+		$items = strip_tags($result[0][0]);
+		$list = explode("\n", $items);
+		$updated_list = '';
+		foreach($list as $line) {
+			if(!in_array($line, array('[DECK]', '[/DECK]'))) {
+				$parts = preg_split('/\s+/', $line);
+				if(is_numeric($parts[0])) {
+					$temp_body = str_replace($line, $parts[0] . ' ' . '[CARD]' . str_replace($parts[0] . ' ', '', $line) . '[/CARD]', $temp_body);
+				} else {
+					$temp_body = str_replace($line, '[CARD]' . $line . '[/CARD]', $temp_body);						
+				}
+			}
+		}
+		$temp_body = str_replace(array('[DECK]<br />', '[/DECK]'), '', $temp_body);
+	}
+	return $temp_body;
+}
+
+function mtg_helper_picks_tagger($temp_body) {
+	$result = array();
+	$picks = '';
+	$delimeter = '';
+	$misspelled_titles = '';
+	preg_match_all('/\[PICKS\](.*)\[\/PICKS\]/s', $temp_body, $result);
+	if(isset($result[1][0])) {
+		foreach(explode("\n", $result[1][0]) as $pick) {
+			$pick = str_replace('<br />', '', $pick);
+			if($pick != '') {
+				$query = new EntityFieldQuery();
+				$entities = $query->entityCondition('entity_type', 'node')
+					->propertyCondition('type', 'card')
+					->propertyCondition('title', $pick)
+					->propertyCondition('status', 1)
+					->range(0,1)
+					->execute();
+				if (!empty($entities['node'])) {
+					$nid = current($entities['node'])->nid;
+					if($nid != '' && is_numeric($nid)) {
+						$node = node_load($nid);
+						$picks .= $delimeter . $node->nid;
+						if($delimeter == '') {
+							$delimeter = '+';
+						}
+					}
+				} else {
+					$misspelled_titles .= '<br />' . $pick;
+				}
+			}
+		}
+		$temp_body = str_replace($result[0][0], views_embed_view('p1p1', 'default', $picks) . $misspelled_titles, $temp_body);
+	}	
+	return $temp_body;
+}
+
+function mtg_helper_draftdeck_tagger($temp_body) {
+	$result = array();
+	$picks = '';
+	$delimeter = '';
+	$misspelled_titles = '';
+	preg_match_all('/\[DRAFTDECK\](.*)\[\/DRAFTDECK\]/s', $temp_body, $result);
+	if(isset($result[1][0])) {
+		foreach(explode("\n", $result[1][0]) as $pick) {
+			$pick = str_replace('<br />', '', $pick);
+			if($pick != '') {
+				$query = new EntityFieldQuery();
+				$entities = $query->entityCondition('entity_type', 'node')
+					->propertyCondition('type', 'card')
+					->propertyCondition('title', $pick)
+					->propertyCondition('status', 1)
+					->range(0,1)
+					->execute();
+				if (!empty($entities['node'])) {
+					$nid = current($entities['node'])->nid;
+					if($nid != '' && is_numeric($nid)) {
+						$node = node_load($nid);
+						$picks .= $delimeter . $node->nid;
+						if($delimeter == '') {
+							$delimeter = '+';
+						}
+					}
+				} else {
+					$misspelled_titles .= '<br />' . $pick;
+				}
+			}
+		}
+		$temp_body = str_replace($result[0][0], views_embed_view('draft_pack', 'block_1', $picks) . $misspelled_titles, $temp_body);
+	}	
+	return $temp_body;
+}
+
+function mtg_helper_quote_tagger($temp_body) {
+	$result = array();
+	preg_match_all('/\[QUOTE(.*?)\](.*?)\[\/QUOTE\]/s', $temp_body, $result);
+		$count = count($result[0]);
+		if($count > 0) {
+			for($i=0; $i<=$count; $i++) {
+				if(isset($result[2][$i])) {
+					$quoted_text = '';
+					$quoted_text .= '<div class="quoted_text">';
+					$quoted_text .= '<span class="author-name">' . str_replace(array(' user="', '"'), '', $result[1][$i]) . '</span>';
+					$quoted_text .= $result[2][$i];		
+					$quoted_text .= '</div>';
+					
+					$temp_body = str_replace($result[0][$i], $quoted_text, $temp_body);
+				}
+			}
+		}
+	return $temp_body;
+}
+
+function mtg_helper_card_tagger($temp_body) {
+	$result = array();
+	preg_match_all('/(\[CARD([^\]]*)\])(.*)(\[\/CARD\])/iU', $temp_body, $result);
+	if(isset($result[0][0])) {
+		foreach($result[0] as $card) {
+			$temp_body = str_replace($card, mtgh_card($card), $temp_body);
+		}
+	}	
+	return $temp_body;
+}
+
+function mtg_helper_form_alter(&$form, &$form_state, $form_id) { //print_r($form_id);
+	if($form_id == 'forum_node_form') {
+		if(isset($_REQUEST['p1p1']) && $_REQUEST['p1p1'] == 1 && isset($_REQUEST['data']) && user_access('execute php code')) {
+			$form['title']['#default_value'] = "P1P1 " . date('n/j/y');
+			$form['body']['und'][0]['#default_value'] = "<?php print views_embed_view('p1p1', 'default', '" . str_replace(' ', '+', $_REQUEST['data']) . "'); ?>";
+			$form['body']['und'][0]['#format'] = 'php_code';
+			$form['taxonomy_forums']['und']['#default_value'] = 903;
+		}
+	}
+	if($form_id == 'comment_node_forum_form') {
+		$form['comment_body']['#suffix'] = '<div class="panel-group custom-tag-tips" id="accordion">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne">
+          Available Tags
+        </a>
+      </h4>
+    </div>
+    <div id="collapseOne" class="panel-collapse collapse">
+      <div class="panel-body">
+				<ul>
+					<li>Image: [IMG]http://test.com/image.jpg[/IMG]</li>
+					<li>Mana: {R}{W}{U} == '
+					.theme('image_style', array('style_name' => 'mana_symbol', 'path' => 'mana/Red_mana.png'))
+					.theme('image_style', array('style_name' => 'mana_symbol', 'path' => 'mana/White_mana.png'))
+					.theme('image_style', array('style_name' => 'mana_symbol', 'path' => 'mana/Blue_mana.png'))
+					.'</li>
+					<li>Card: [CARD]Counterspell[/CARD]</li>
+					<li>Deck:<br />
+							[DECK]<br />
+							4 Counterspell<br />
+							4 Island<br />
+							[/DECK]</li>
+					<li>Picks:<br />
+							[PICKS]<br />
+							Jace, the Mind Sculptor<br />
+							Umezawa\'s Jitte<br />
+							[/PICKS]</li>
+					<li>Draft Deck:<br />
+							[DRAFTDECK]<br />
+							Ancestral Vision<br />
+							Thoughtseize<br />
+							Bitterblossom<br />
+							[/DRAFTDECK]</li>
+				</ul>
+      </div>
+    </div>
+  </div>
+</div>';
+	}
+	if($form_id == 'cube_node_form') {
+		$form['cube_list'] = array(
+			'#type' => 'textarea',
+			'#title' => t('Cube List'),
+			'#description' => t('Enter your cube list one card per line like:<br />Counterspell<br />Blightning'),	
+		);
+		$form['field_cube_card']['#prefix'] = '<div style="display: none;">';
+		$form['field_cube_card']['#suffix'] = '</div>';
+		if($form['#node']) {
+			$node = $form['#node'];
+			if(isset($node->field_cube_card[$node->language]) && count($node->field_cube_card[$node->language])) {
+				foreach($node->field_cube_card[$node->language] as $card) {
+					$card = node_load($card['nid']);
+					if(isset($card->title)) {
+						$cards[] = $card->title;
+					}
+				}
+				if(count($cards)) {
+					$form['cube_list']['#default_value'] = implode("\n", $cards);
+				}
+			}
+		}
+		$form['actions']['submit']['#validate'][] = 'mtg_helper_process_cube_list_validate';
+		$form['actions']['submit']['#submit'][] = 'mtg_helper_process_cube_list_submit';
+	}
+	if($form_id == 'list_node_form') {
+		$form['field_color']['#access'] = FALSE;
+		$form['main_deck'] = array(
+			'#type' => 'textarea',
+			'#title' => t('Main Deck'),
+			'#description' => t('Enter your main deck in the following format:<br />3 Counterspell<br />1 Blightning'),	
+		);
+		$form['sideboard'] = array(
+			'#type' => 'textarea',
+			'#title' => t('Sideboard'),
+			'#description' => t('Enter your sidebard in the following format:<br />3 Counterspell<br />1 Blightning'),	
+		);
+		if($form['#node']) {
+			$node = $form['#node'];
+			$cards = array();
+			if(isset($node->field_main_deck[$node->language]) && count($node->field_main_deck[$node->language])) {
+				foreach($node->field_main_deck[$node->language] as $entity) {
+					$card = entity_load_single('field_collection_item', $entity['value']);
+					if(is_object($card) && isset($card->field_quantity[$node->language]) && isset($card->field_card[$node->language])) {
+						$cards[] = $card->field_quantity[$node->language][0]['value'] . ' ' . node_load($card->field_card[$node->language][0]['nid'])->title;
+					}
+				}
+				if(count($cards)) {
+					$form['main_deck']['#default_value'] = implode("\n", $cards);
+				}
+			}
+			$cards = array();
+			if(isset($node->field_sideboard[$node->language]) && count($node->field_sideboard[$node->language])) {
+				foreach($node->field_sideboard[$node->language] as $entity) {
+					$card = entity_load_single('field_collection_item', $entity['value']);
+					$cards[] = $card->field_quantity[$node->language][0]['value'] . ' ' . node_load($card->field_card[$node->language][0]['nid'])->title;
+				}
+				if(count($cards)) {
+					$form['sideboard']['#default_value'] = implode("\n", $cards);
+				}
+			}
+		}
+		$form['actions']['submit']['#validate'][] = 'mtg_helper_process_card_list_validate';
+		$form['actions']['submit']['#submit'][] = 'mtg_helper_process_card_list_submit';
+	}
+	if($form_id == 'views_exposed_form' && arg(0) == 'cards') {
+		$form['field_power_value']['#size'] = 5;
+		$form['field_toughness_value']['#size'] = 5;
+		$form['field_cmc_value']['value']['#size'] = 5;
+		
+		$form['cube_card']['#prefix'] = '<label for="toggle-cube">Cube Cards</label> <input id="toggle-cube" type="checkbox"><div style="display: none;">';
+		$form['cube_card']['#suffix'] = '</div>';
+		
+		foreach($form['field_cmc_value_op']['#options'] as $key => $value) {
+			if(!in_array($key, array('<', '<=', '=', '>=', '>'))) {
+				unset($form['field_cmc_value_op']['#options'][$key]);
+			} else {
+				$form['field_cmc_value_op']['#options'][$key] = $key;
+			}
+		}
+	}
+}
+
+function mtg_helper_process_cube_list_validate(&$form, &$form_state) {
+	$cube_list = array();
+	$form_values = $form_state['values'];
+	$cards = explode("\n", $form_values['cube_list']);
+	foreach($cards as $card_name) {
+		if(trim($card_name) != '') {
+			$card_nid = db_query("SELECT nid FROM {node} WHERE LOWER(title) = :title", array(":title" => trim(strtolower($card_name))))->fetchField();
+			if($card_nid == '') {
+				form_set_error('cube_list', t('!card_name is not a card.', array('!card_name' => $card_name)));
+				return;
+			}
+			if(isset($card_nid)) {
+				$cube_list[] = array(
+					'nid' => $card_nid,
+				);
+			}
+		}
+	}	
+	/*
+	if(count($cube_list) <> 720) {
+		form_set_error('cube_list', 'Please enter exactly 720 cards for your cube list.');
+		return;
+	}
+	*/
+	if(count($cube_list)) {
+		$form_state['values']['cube_list'] = $cube_list;
+	}
+}
+
+function mtg_helper_process_cube_list_submit(&$form, &$form_state) {
+	$form_values = $form_state['values'];
+	$node = node_load($form_values['nid']);
+	$node->field_cube_card = array();
+	foreach($form_values['cube_list'] as $card) {
+		$node->field_cube_card['und'][] = $card;
+	}
+	node_save($node);    
+}
+
+
+function mtg_helper_process_card_list_validate(&$form, &$form_state) {
+	$main_deck = array();
+	$sideboard = array();
+	$form_values = $form_state['values'];
+	$cards = explode("\n", $form_values['main_deck']);
+	$main_deck = array();
+	foreach($cards as $card) {
+		if(trim($card) != '') {
+			$first_space = strpos($card, ' ');
+			$quantity = substr($card, 0, $first_space);
+			if(!is_numeric($quantity)) {
+				$card_name = trim($card);
+				$quantity = 1;
+			} else {
+				$card_name = trim(substr($card, $first_space));
+			}
+			$card_nid = db_query("SELECT nid FROM {node} WHERE title LIKE :title AND type = :type", array(':title' => $card_name, ':type' => 'card'))->fetchField();
+			if($card_nid == '') {
+				form_set_error('main_deck', t('!card_name is not a card.', array('!card_name' => $card_name)));
+				return;
+			}
+			if(isset($card_nid)) {
+				$main_deck[] = array(
+					'quantity' => $quantity,
+					'nid' => $card_nid,
+				);
+			}
+		}
+	}	
+	$cards = explode("\n", $form_values['sideboard']);
+	if(count($cards) > 1) {
+		$sideboard = array();
+		foreach($cards as $card) {
+			$first_space = strpos($card, ' ');
+			$quantity = substr($card, 0, $first_space);
+			if(!is_numeric($quantity)) {
+				$card_name = $card;
+				$quantity = 1;
+			} else {
+				$card_name = trim(substr($card, $first_space));
+			}
+			$card_nid = db_query("SELECT nid FROM {node} WHERE LOWER(title) = :title", array(":title" => strtolower($card_name)))->fetchField();
+			if($card_nid == '') {
+				form_set_error('sideboard', t('!card_name is not a card.', array('!card_name' => $card_name)));
+				return;
+			}
+			
+			$sideboard[] = array(
+				'quantity' => $quantity,
+				'nid' => $card_nid,
+			);
+		}	
+	}
+	if ($form_values['field_format'][$form_values['language']][0]['tid'] == 331) { // Commander
+		if(!isset($form_values['field_commander'][$form_values['language']][0]['nid']) || $form_values['field_commander'][$form_values['language']][0]['nid'] == '') {
+			form_set_error('field_commander', 'Please enter your Commander.');
+			return;
+		} else {
+			$commander = node_load($form_values['field_commander'][$form_values['language']][0]['nid']);
+			$commander_colors = $commander_colors_text = array();
+			foreach($commander->field_color[$commander->language] as $commander_color) {
+				$commander_colors[] = $commander_color['tid'];
+				$commander_color_term = taxonomy_term_load($commander_color['tid']);
+				$commander_colors_text[] = $commander_color_term->name;
+			}
+			foreach($main_deck as $card) {
+				$card_node = node_load($card['nid']);
+				foreach($card_node->field_color[$card_node->language] as $card_color) {
+					if(!in_array($card_color['tid'], $commander_colors)) {
+						$card_color_term = taxonomy_term_load($card_color['tid']);
+						form_set_error('main_deck', t("The card !card is !color which is not one of the colors of your Commander !commander (!commander_colors).", array('!commander' => l($commander->title, "node/{$commander->nid}"), '!commander_colors' => implode(', ', $commander_colors_text), '!color' => $card_color_term->name, '!card' => l($card_node->title, "node/{$card_node->nid}"))));
+						return;
+					}
+				}
+			}
+		}
+		if(count($main_deck) <> 99) {
+			form_set_error('main_deck', 'Please enter exactly 99 cards for your main deck and one card for your Commander.');
+			return;
+		}
+	}
+	if(count($main_deck)) {
+		$form_state['values']['main_deck'] = $main_deck;
+	}
+	if(count($sideboard)) {
+		$form_state['values']['sideboard'] = $sideboard;
+	}
+}
+
+function mtg_helper_process_card_list_submit(&$form, &$form_state) {
+	$form_values = $form_state['values'];
+	$node = node_load($form_values['nid']);
+	if(isset($node->field_main_deck[$node->language]) && count($node->field_main_deck[$node->language])) {
+		$entity_ids = array();
+		foreach($node->field_main_deck[$node->language] as $entity) {
+			$entity_ids[] = $entity['value'];
+		}
+		entity_delete_multiple('field_collection_item', $entity_ids);
+		unset($node->field_main_deck);
+	}
+	if(isset($node->field_sideboard[$node->language]) && count($node->field_sideboard[$node->language])) {
+		$entity_ids = array();
+		foreach($node->field_sideboard[$node->language] as $entity) {
+			$entity_ids[] = $entity['value'];
+		}
+		entity_delete_multiple('field_collection_item', $entity_ids);
+		unset($node->field_sideboard);
+	}
+	$colors = array();
+	foreach($form_values['main_deck'] as $card) {
+		if(isset($card['nid'])) {
+			$my_collection = entity_create('field_collection_item', array('field_name' => 'field_main_deck'));
+			$my_collection->setHostEntity('node', $node);
+			$my_collection->field_card[$node->language][0] = array('nid' => $card['nid']);
+			$my_collection->field_quantity[$node->language][0] = array('value' => $card['quantity']);
+			$my_collection->save();
+			$card_node = node_load($card['nid']);
+			if(isset($card_node->field_color[$card_node->language])) {
+				foreach($card_node->field_color[$card_node->language] as $card_color) {
+					if(!in_array($card_color['tid'], $colors)) {
+						$colors[] = $card_color['tid'];
+					}
+				}
+			}
+		}
+	}
+	if(isset($form_values['sideboard'][0])) {
+		foreach($form_values['sideboard'] as $card) {
+			$my_collection = entity_create('field_collection_item', array('field_name' => 'field_sideboard'));
+			$my_collection->setHostEntity('node', $node);
+			$my_collection->field_card[$node->language][0] = array('nid' => $card['nid']);
+			$my_collection->field_quantity[$node->language][0] = array('value' => $card['quantity']);
+			$my_collection->save();
+		}
+		unset($node->field_color);
+		if(count($colors)) {	
+			foreach($colors as $color) {
+				$node->field_color[$node->language][] = array('tid' => $color);
+			}
+		}
+	}
+	node_save($node);    
+}
+
+function mtg_helper_card_importer($sets) {
+	$new = 0;
+	$updated = 0;
+	$count = 0;
+	foreach($sets as $set) {
+		foreach(taxonomy_get_term_by_name($set) as $term) {
+			if ($term->vid == 4) {
+				$set_code = $term->field_code['und'][0]['value'];
+			}
+		}
+		
+		///CHECK IF IMAGE DIRECTORIES EXIST FOR THIS SET AND CREATE IF NEEDED
+		if (!file_exists('sites/default/files/cardpics/' . $set_code)) {
+			mkdir('sites/default/files/cardpics/' . $set_code, 0755);
+			mkdir('sites/default/files/cardpics/' . $set_code . '/full', 0755);
+			mkdir('sites/default/files/cardpics/' . $set_code . '/crop', 0755);
+		}
+	
+		$all_rows = array();
+		$header = null;
+		if (($handle = fopen("sites/default/files/cardpics/_importscripts/".$set_code.".csv", "r")) !== FALSE) {
+			while (($row = fgetcsv($handle, 1000, ",")) !== FALSE) {
+				if ($header === null) {
+					$header = $row;
+					continue;
+				}
+				$all_rows[] = array_combine($header, $row);
+			}
+		}
+		
+		$row_count = 0;
+		foreach($all_rows as $card_info) {	
+			if(strpos($card_info['type'], 'Basic Land') !== false || $card_info['name'] == '') {
+				continue;
+			}
+			$row_count++;
+		}
+
+		//print_r($all_rows);
+		//exit();
+		
+		foreach($all_rows as $card_info) {	
+			if(strpos($card_info['type'], 'Basic Land') !== false || $card_info['name'] == '') {
+				continue;
+			}
+			$card_info['name'] = str_replace(array('Æ', 'Ã†', 'é', 'û', 'â', 'ö', 'á', 'ú', 'í'), array('AE', 'AE', 'e', 'u', 'a', 'o', 'a', 'u', 'i'), $card_info['name']);
+			
+			$split_card = (strpos($card_info['name'], ' // ') !== false ? 1 : 0);
+			$card_info['name'] = ($split_card ? str_replace(' // ', '/', $card_info['name']) : $card_info['name']);
+				$split_rarity = explode(' // ', $card_info['rarity']);
+			$card_info['rarity'] = ($split_card ? $split_rarity[0] : $card_info['rarity']);
+				$split_type = explode(' // ', $card_info['type']);
+			$card_info['type'] = ($split_card ? $split_type[0] : $card_info['type']);
+				$split_artist = explode(' // ', $card_info['artist']);
+			$card_info['artist'] = ($split_card ? $split_artist[0] : $card_info['artist']);
+			$card_info['color'] = ($split_card ? str_replace(' // ', '', $card_info['color']) : $card_info['color']);
+	
+			$existing_nid = db_query("SELECT nid FROM {node} WHERE title = :title", array(":title" => $card_info['name']))->fetchField();
+			if($existing_nid != '') { //UPDATE NODE
+				$node = node_load($existing_nid);
+				$node->title = $card_info['name'];
+				watchdog('mtg_helper', 'Updated card ' . $node->title . '. Added to set ' . mtg_helper_vocab_check($set, 4));
+				echo 'Updated card ' . $node->title . '<br />';
+				$updated++;
+			} else {									//CREATE NODE
+				$node = new StdClass();
+				$node->type = 'card';
+				node_object_prepare($node);
+				$node->title = $card_info['name'];
+				$node->language = LANGUAGE_NONE;
+				watchdog('mtg_helper', 'Created card ' . $node->title . '.' );
+				echo 'Created card ' . $node->title . '<br />';
+				$new++;
+			}
+
+			//SET
+			$set_tid = mtg_helper_vocab_check($set, 4);
+			if(isset($node->field_set[$node->language][0]['tid']) && $node->field_set[$node->language][0]['tid'] != '') {
+				if($set_tid == $node->field_set[$node->language][0]['tid']) {
+					echo 'skipped '. $card_info['name'] . '<br />';
+					watchdog('mtg_helper', 'skipped ' . $card_info['name']);
+					continue;
+				}
+				$set_tids = array();
+				foreach($node->field_set[$node->language] as $term) {
+					$set_tids[] = $term['tid'];
+				}
+				if(!in_array($set_tid, $set_tids)) {
+					$node->field_set[$node->language][] = array('tid' => $set_tid);
+				}
+			} else {
+				$node->field_set[$node->language][0] = array('tid' => $set_tid);
+			}
+
+			//SPLIT CARD
+			if($split_card) {
+				$node->field_split_card[$node->language][0]['value'] = 1;
+			}
+			
+			//COLOR(s)
+			$existing_colors = array();
+			$node->field_color = array();
+			for ($i=0; $i < strlen($card_info['color']); $i++)  {
+				$character = substr($card_info['color'], $i, 1);
+				$color_tid = mtg_helper_color_aliases($character);
+				if(!in_array($color_tid, $existing_colors)) {
+					$node->field_color[$node->language][] = array('tid' => $color_tid);
+					$existing_colors[] = $color_tid;
+				}
+			} 
+			
+			//CHECK FOR SPLIT CARD SECOND CMC
+			if($split_card) {
+				$cmcs = explode(' // ', $card_info['converted_manacost']);
+				$node->field_cmc[$node->language][0]['value'] = $cmcs[0];
+				$node->field_cmc[$node->language][1]['value'] = $cmcs[1];
+			} else {
+				$node->field_cmc[$node->language][0]['value'] = $card_info['converted_manacost'];
+			}
+			
+			//CHECK FOR SPLIT CARD SECOND MANA COST
+			if($split_card) {
+				$mana_costs = explode(' // ', $card_info['manacost']);
+				$node->field_mana_cost[$node->language][0]['value'] = $mana_costs[0];
+				$node->field_mana_cost[$node->language][1]['value'] = $mana_costs[1];
+			} else {
+				$node->field_mana_cost[$node->language][0]['value'] = $card_info['manacost'];
+			}
+
+			$node->field_power[$node->language][0]['value'] = $card_info['power'];
+			$node->field_toughness[$node->language][0]['value'] = $card_info['toughness'];
+			$node->field_loyalty[$node->language][0]['value'] = ($card_info['loyalty'] != '' ? $card_info['loyalty'] : 0);
+			$node->field_ability[$node->language][0]['value'] = check_plain(str_replace(array("Â£", "£", "—", "â€¢"), array("\n", "\n", "-", "&bull;"), $card_info['ability']));
+			$node->field_flavor_text[$node->language][0]['value'] = check_plain(str_replace(array("Â£", "£", "—", "â€¢"), array("\n", "\n", "-", "&bull;"), $card_info['flavor']));
+			
+			//RARITY
+			$node->field_rarity[$node->language][0]['tid'] = mtg_helper_rarity_aliases($card_info['rarity']);
+									
+			//Supertypes and Subtypes
+			if(strpos($card_info['type'], ' — ') !== false) {
+				$cardtypes = explode(' — ', $card_info['type']);
+				$types = $cardtypes[0];
+				$subtypes = $cardtypes[1];
+			} else {
+				$types = $card_info['type'];
+				$subtypes = NULL;
+			}
+			
+			//Supertype
+			$node->field_type = array();
+			if(strpos($types, ' ') !== false) {
+				$cardtypes = explode(' ', $types);
+				foreach($cardtypes as $cardtype) {
+					$node->field_type[$node->language][] = array('tid' => mtg_helper_vocab_check($cardtype, 6));
+				}
+			} else {
+				$node->field_type[$node->language][] = array('tid' => mtg_helper_vocab_check($types, 6));
+			}
+	
+			//Subtype
+			$node->field_sub_type = array();
+			if(strpos($subtypes, ' ') !== false) {
+				$cardsubtypes = explode(' ', $subtypes);
+				foreach($cardsubtypes as $cardsubtype) {
+					$node->field_sub_type[$node->language][] = array('tid' => mtg_helper_vocab_check(str_replace("’", "", $cardsubtype), 7));
+				}
+			} elseif(!is_null($subtypes)) {
+				$node->field_sub_type[$node->language][] = array('tid' => mtg_helper_vocab_check(str_replace("’", "", $subtypes), 7));
+			}	
+	
+			$art_exists = 0;
+			if(isset($node->field_art[$node->language][0]['value']) && $node->field_art[$node->language][0]['value'] != '') {
+				foreach($node->field_art[$node->language] as $art) {
+					$entity = entity_load_single('field_collection_item', $art['value']);
+					if(isset($entity->field_set[$node->language][0]['tid']) && $entity->field_set[$node->language][0]['tid'] == $set_tid && isset($entity->field_full_image[$node->language]['uri']) && $entity->field_full_image[$node->language]['uri'] != '') {
+						$art_exists = 1;
+						break;
+					}
+				}
+			}
+
+			if(!$art_exists) {			
+				if($card_info['artist'] != '') {
+					$card_info['artist'] = str_replace(array('é', 'ä'), array('e', 'a'), $card_info['artist']);
+				}
+				
+				//ART INFO
+				$my_collection = entity_create('field_collection_item', array('field_name' => 'field_art'));
+				$my_collection->setHostEntity('node', $node);
+				$my_collection->field_set[$node->language][0] = array('tid' => $set_tid);
+		
+				//FULL
+				$filepath = drupal_realpath('sites/default/files/cardpics/_importscripts/full/'.$set_code.'/' . str_replace(array(':', '/', '"'), array('','', ''), $node->title) . '.jpg');
+				$full_image = (object) array(
+					'uid' => 1,
+					'uri' => $filepath,
+					'filemime' => file_get_mimetype($filepath),
+					'status' => 1,
+				);
+				$my_collection->field_full_image[$node->language][0] = (array)file_copy($full_image, 'public://cardpics/' . $set_code . '/full');
+		
+				//CROP
+				if(!$split_card) {
+					$filepath_crop = drupal_realpath('sites/default/files/cardpics/_importscripts/crop/'.$set_code.'/' . str_replace(array(':', '/', '"'), array('','', ''), $node->title) . '.jpg');
+					$crop_image = (object) array(
+						'uid' => 1,
+						'uri' => $filepath_crop,
+						'filemime' => file_get_mimetype($filepath_crop),
+						'status' => 1,
+					);
+					$my_collection->field_cropped_image[$node->language][0] = (array)file_copy($crop_image, 'public://cardpics/' . $set_code . '/crop');
+				}
+		
+				//Artist
+				$my_collection->field_artist[$node->language][0] = array('tid' => mtg_helper_vocab_check($card_info['artist'], 9));		 
+				$my_collection->save();
+				
+				if(count($node->field_art['und']) > 1) {
+					$arts = array();
+					foreach($node->field_art['und'] as $art) {
+						$piece = entity_load_single('field_collection_item', $art['value']);
+						if(isset($piece->field_set['und'][0]['tid'])) {
+							$term = taxonomy_term_load($piece->field_set['und'][0]['tid']);
+							$date = strtotime($term->field_release_date['und'][0]['value']);
+							$arts[$date] = $art;
+						}
+					}
+					ksort($arts);
+				
+					$node->field_art['und'] = array_reverse(array_values($arts));	
+				}
+			}
+
+			node_save($node);
+			
+			
+			$count++;
+			if($count > 3) {
+				//exit();
+			}
+		}	
+	}
+	print $new . ' cards added and ' . $updated . ' cards updated.';
+}
+
+function mtg_helper_color_aliases($color) {
+	switch ($color) {
+    case 'B':
+			return mtg_helper_vocab_check('Black', 5, 1);
+			break;
+    case 'G':
+			return mtg_helper_vocab_check('Green', 5, 1);
+			break;
+    case 'U':
+			return mtg_helper_vocab_check('Blue', 5, 1);
+			break;
+    case 'R':
+			return mtg_helper_vocab_check('Red', 5, 1);
+			break;
+    case 'W':
+			return mtg_helper_vocab_check('White', 5, 1);
+			break;
+    case 'A':
+			return mtg_helper_vocab_check('Artifact', 5, 1);
+			break;
+    case 'L':
+			return mtg_helper_vocab_check('Land', 5, 1);
+			break;
+		case 'C':
+			return mtg_helper_vocab_check('Colorless', 5, 1);
+			break;
+		default:
+			return mtg_helper_vocab_check('Colorless', 5, 1);
+			break;
+	}
+}
+
+function mtg_helper_rarity_aliases($rarity) {
+	switch ($rarity) {
+    case 'R':
+			return mtg_helper_vocab_check('Rare', 8, 1);
+			break;
+    case 'U':
+			return mtg_helper_vocab_check('Uncommon', 8, 1);
+			break;
+    case 'C':
+			return mtg_helper_vocab_check('Common', 8, 1);
+			break;
+    case 'M':
+			return mtg_helper_vocab_check('Mythic', 8, 1);
+			break;
+    case 'T':
+			return mtg_helper_vocab_check('Timeshifted', 8, 1);
+			break;
+	}
+}
+
+
+function mtg_helper_vocab_check($term, $vocab_id, $static = NULL) {
+	if(!$static) {
+		$term_exists = db_query("SELECT COUNT(*) FROM {taxonomy_term_data} WHERE name = :name AND vid =:vid", array(":name" => $term, ":vid" => $vocab_id))->fetchField();
+		if (!$term_exists) {
+			$new_term = new stdClass();
+			$new_term->name = $term;
+			$new_term->vid = $vocab_id;
+			taxonomy_term_save($new_term);
+			watchdog('mtg_helper', 'Adding term '. $term . ' to vocabulary ' . $vocab_id);	
+			taxonomy_term_save($new_term);
+		}
+	}
+	$term_details = taxonomy_get_term_by_name($term, str_replace('-', '_', strtolower(taxonomy_vocabulary_load($vocab_id)->name)));
+	foreach($term_details as $term_detail) {
+		return $term_detail->tid;
+	}
+}
+
+function mtg_helper_block_info() {
+  $blocks = array();
+
+  $blocks['mana_symbols'] = array(
+    'info' => t('Mana Symbols'),
+	);
+
+  return $blocks;
+}
+
+
+function mtg_helper_block_view($delta = '') {
+  $block = array();
+	$content = '';
+
+  switch ($delta) {
+    case 'mana_symbols':
+			$colors = array('White', 'Blue', 'Black', 'Red', 'Green');
+			$buttons = array();
+			foreach($colors as $color) {
+				$buttons[] = theme('image_style', array('style_name' => 'mana_symbol', 'path' => 'mana/'.$color.'_mana.png', 'alt' => $color, 'title' => t('Show ' . $color . ' images.'), 'attributes' => array('class' => 'mana-symbol mana-symbol-' . $color, 'onclick' => 'toggleSlidshowFilters(\''.$color.'\');'))); 
+			}
+			$content .= theme('item_list', array('items' => $buttons, 'attributes' => array('class' => 'color-filters')));
+		break;
+		}
+	$block['content'] = $content;
+	
+  return $block;
+}
+
+function mtg_helper_time_ago($tm,$rcs = 0) {
+   $cur_tm = time(); $dif = $cur_tm-$tm;
+   $pds = array('second','minute','hour','day','week','month','year','decade');
+   $lngh = array(1,60,3600,86400,604800,2630880,31570560,315705600);
+   for($v = sizeof($lngh)-1; ($v >= 0)&&(($no = $dif/$lngh[$v])<=1); $v--); if($v < 0) $v = 0; $_tm = $cur_tm-($dif%$lngh[$v]);
+
+   $no = floor($no); if($no <> 1) $pds[$v] .='s'; $x=sprintf("%d %s ",$no,$pds[$v]);
+   if(($rcs == 1)&&($v >= 1)&&(($cur_tm-$_tm) > 0)) $x .= time_ago($_tm);
+   return $x;
+}
+
+/**
+ * Implements hook_views_pre_build().
+ */
+function mtg_helper_views_pre_build(&$view) {
+  if ($view->name == 'draft_pack') {
+    // Set the override path to the current page. This will redirect the back view to
+    // the current page when submitted in case AJAX fails.
+    $view->override_path = $_GET['q'];
+  }
+}
+
+function mtg_helper_mail_alter(&$message) {
+	global $user;
+	if($user->uid == 1) {
+		if(strpos($message['subject'], 'New Forum topic: P1P1') !== false) {		
+			//watchdog('test', '<pre>' . print_r($message['body']['body']['content']['teaser']['#markup'], true) . '</pre>');
+			//$message['body']['body']['content']['teaser']['#markup'] = 'TEST TEST TEST';
+		}
+	}
+}
