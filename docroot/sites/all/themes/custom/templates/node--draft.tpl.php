@@ -6,20 +6,22 @@
  *
  * Available variables:
  * - $title: the (sanitized) title of the node.
- * - $content: An array of node items. Use render($content) to print them all, or
- *   print a subset such as render($content['field_example']). Use
+ * - $content: An array of node items. Use render($content) to print them all,
+ *   or print a subset such as render($content['field_example']). Use
  *   hide($content['field_example']) to temporarily suppress the printing of a
  *   given element.
  * - $user_picture: The node author's picture from user-picture.tpl.php.
  * - $date: Formatted creation date. Preprocess functions can reformat it by
- *   calling format_date() with the desired parameters on the $created variable.
+ *   calling format_date() with the desired parameters on the $created
+ *   variable.
  * - $name: Themed username of node author output from theme_username().
  * - $node_url: Direct url of the current node.
  * - $terms: the themed list of taxonomy term links output from theme_links().
  * - $display_submitted: whether submission information should be displayed.
  * - $classes: String of classes that can be used to style contextually through
  *   CSS. It can be manipulated through the variable $classes_array from
- *   preprocess functions. The default values can be one or more of the following:
+ *   preprocess functions. The default values can be one or more of the
+ *   following:
  *   - node: The current template type, i.e., "theming hook".
  *   - node-[type]: The current node type. For example, if the node is a
  *     "Blog entry" it would result in "node-blog". Note that the machine
@@ -28,7 +30,8 @@
  *   - node-preview: Nodes in preview mode.
  *   The following are controlled through the node publishing options.
  *   - node-promoted: Nodes promoted to the front page.
- *   - node-sticky: Nodes ordered above other non-sticky nodes in teaser listings.
+ *   - node-sticky: Nodes ordered above other non-sticky nodes in teaser
+ *   listings.
  *   - node-unpublished: Unpublished nodes visible only to administrators.
  * - $title_prefix (array): An array containing additional output populated by
  *   modules, intended to be displayed in front of the main title tag that
@@ -63,9 +66,11 @@
  * - $logged_in: Flags true when the current user is a logged-in member.
  * - $is_admin: Flags true when the current user is an administrator.
  *
- * Field variables: for each field instance attached to the node a corresponding
+ * Field variables: for each field instance attached to the node a
+ *   corresponding
  * variable is defined, e.g. $node->body becomes $body. When needing to access
- * a field's raw values, developers/themers are strongly encouraged to use these
+ * a field's raw values, developers/themers are strongly encouraged to use
+ *   these
  * variables. Otherwise they will have to explicitly specify the desired field
  * language, e.g. $node->body['en'], thus overriding any language negotiation
  * rule that was previously applied.
@@ -74,89 +79,89 @@
  * @see template_preprocess_node()
  * @see template_process()
  */
-	global $user;
-	$player_uids = array();
-	foreach($node->field_players['und'] as $player_info) {
-		$player_uids[] = $player_info['uid'];
-	}
-	if(!in_array($user->uid, $player_uids)) {
-		drupal_set_message("You are not in this draft.");
-		drupal_goto('forum');
-	}
+global $user;
+$player_uids = [];
+foreach ($node->field_players['und'] as $player_info) {
+  $player_uids[] = $player_info['uid'];
+}
+if (!in_array($user->uid, $player_uids)) {
+  drupal_set_message("You are not in this draft.");
+  drupal_goto('forum');
+}
 
-	$picks_query = new EntityFieldQuery();
-	$picks_query
-	 ->entityCondition('entity_type', 'node')
-	 ->entityCondition('bundle', 'draft_seat')
-	 ->fieldCondition('field_draft_reference', 'nid', $node->nid, '=')
-	 ->propertyCondition('uid', $user->uid);
-	$picks_results = $picks_query->execute();	
-	if (isset($picks_results['node'])) {
-		foreach($picks_results['node'] as $picks_results_node) {
-			$picks_node = node_load($picks_results_node->nid);
-		}
-	}
-	
-	$pick_count = 0;
-	$picks = '';
-	$picks_delimeter = '';
-	if(isset($picks_node->field_seat_picks['und'])) {
-		$pick_count = count($picks_node->field_seat_picks['und']);
-		foreach($picks_node->field_seat_picks['und'] as $pick_info) {
-			$picks .= $picks_delimeter . $pick_info['nid'];
-			$picks_delimeter = '+';
-		}
-	}
-	
-	$query = new EntityFieldQuery();
-	$query
-	 ->entityCondition('entity_type', 'node')
-	 ->entityCondition('bundle', 'draft_pack')
-	 ->propertyCondition('uid', $user->uid)
-	 ->fieldCondition('field_draft_reference', 'nid', $node->nid, '=')
-	 ->fieldOrderBy('field_pick_number', 'value', 'ASC')
-	 ->range(0, 1);
-	$result = $query->execute();
-	$cards = '';
-	$delimeter = '';
-	if (isset($result['node'])) {
-		foreach($result['node'] as $result_node) {
-		//watchdog('test', '$result_node->nid = ' . $result_node->nid);
-			$pack_node = node_load($result_node->nid);
-			if(isset($pack_node->field_card['und'])) {
-				foreach($pack_node->field_card['und'] as $card_info) {
-					$cards .= $delimeter . $card_info['nid'];
-					$delimeter = '+';
-				}
-			}
-		}
-	}
-	
-	if ($pick_count == 45) {
-		print draft_system_picks_viewer($node, $user->uid);
-	}
-	
-	$block = module_invoke('mtg_helper', 'block_view', 'mana_symbols');
-	$mana_symbols = '<div id="#block-mtg-helper-mana-symbols">' . render($block['content']) . '</div>';
-	
-	?>
-  
+$picks_query = new EntityFieldQuery();
+$picks_query
+  ->entityCondition('entity_type', 'node')
+  ->entityCondition('bundle', 'draft_seat')
+  ->fieldCondition('field_draft_reference', 'nid', $node->nid, '=')
+  ->propertyCondition('uid', $user->uid);
+$picks_results = $picks_query->execute();
+if (isset($picks_results['node'])) {
+  foreach ($picks_results['node'] as $picks_results_node) {
+    $picks_node = node_load($picks_results_node->nid);
+  }
+}
+
+$pick_count = 0;
+$picks = '';
+$picks_delimeter = '';
+if (isset($picks_node->field_seat_picks['und'])) {
+  $pick_count = count($picks_node->field_seat_picks['und']);
+  foreach ($picks_node->field_seat_picks['und'] as $pick_info) {
+    $picks .= $picks_delimeter . $pick_info['nid'];
+    $picks_delimeter = '+';
+  }
+}
+
+$query = new EntityFieldQuery();
+$query
+  ->entityCondition('entity_type', 'node')
+  ->entityCondition('bundle', 'draft_pack')
+  ->propertyCondition('uid', $user->uid)
+  ->fieldCondition('field_draft_reference', 'nid', $node->nid, '=')
+  ->fieldOrderBy('field_pick_number', 'value', 'ASC')
+  ->range(0, 1);
+$result = $query->execute();
+$cards = '';
+$delimeter = '';
+if (isset($result['node'])) {
+  foreach ($result['node'] as $result_node) {
+    //watchdog('test', '$result_node->nid = ' . $result_node->nid);
+    $pack_node = node_load($result_node->nid);
+    if (isset($pack_node->field_card['und'])) {
+      foreach ($pack_node->field_card['und'] as $card_info) {
+        $cards .= $delimeter . $card_info['nid'];
+        $delimeter = '+';
+      }
+    }
+  }
+}
+
+if ($pick_count == 45) {
+  print draft_system_picks_viewer($node, $user->uid);
+}
+
+$block = module_invoke('mtg_helper', 'block_view', 'mana_symbols');
+$mana_symbols = '<div id="#block-mtg-helper-mana-symbols">' . render($block['content']) . '</div>';
+
+?>
+
 <article id="node-<?php print $node->nid; ?>" class="col-xs-12<?php print ($pick_count < 45 ? ' col-sm-10 ' : ''); print $classes; ?>"<?php print $attributes; ?>>
-  <div id="pack-<?php print $pack_node->nid; ?>" class="pack-wrapper">
-    <?php print (($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value'] ? '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid) : ($pick_count < 45 ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : '')); ?>
-  </div>
-  <div id="picks-wrapper">
-    <?php print ($pick_count > 0 ? '<h2>Your picks</h2>' . views_embed_view('draft_pack', 'page_1', $picks) : '<h2>Your picks</h2>No picks yet.'); ?>
-  </div>
+    <div id="pack-<?php print $pack_node->nid; ?>" class="pack-wrapper">
+      <?php print (($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value'] ? '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid) : ($pick_count < 45 ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : '')); ?>
+    </div>
+    <div id="picks-wrapper">
+      <?php print ($pick_count > 0 ? '<h2>Your picks</h2>' . views_embed_view('draft_pack', 'page_1', $picks) : '<h2>Your picks</h2>No picks yet.'); ?>
+    </div>
 </article>
-  
+
 <?php if ($pick_count < 45): ?>
-<div class="col-xs-12 col-sm-2">
-  <?php 
-		print draft_system_seats_viewer($node->nid); 
-		print '<h2>Pick Count</h2><div class="pick-count-wrapper">' . $pick_count . '</div>';
-	?>
-</div>
+    <div class="col-xs-12 col-sm-2">
+      <?php
+      print draft_system_seats_viewer($node->nid);
+      print '<h2>Pick Count</h2><div class="pick-count-wrapper">' . $pick_count . '</div>';
+      ?>
+    </div>
 <?php endif; ?>
 
 <?php //print ($pick_count == 45 ? render($content['comments']) : ''); ?>
