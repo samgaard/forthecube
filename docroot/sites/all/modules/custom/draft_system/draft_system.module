@@ -306,8 +306,24 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
 
 
     if ($rochester) {
-      $seat_number++;
-      $seat_number = ($seat_number <= $seat_count ? $seat_number : 1);
+      //NEEDS TO SNAKE & MAKE SURE WHEEL PICKS TWICE
+      $snake = $pack_node->field_snake['und'][0]['value'];
+      //IF FIRST DRAFTER AND BOX IS UNCHECKED, SEAT NUMBER ++
+      if($seat_number == 1 && !$snake) {
+        $seat_number++;
+      }
+      //IF FIRST DRAFTER AND BOX IS CHECKED, UNCHECK BOX AND KEEP SEAT NUMBER AS FIRST DRAFTER
+      if($seat_number == 1 && $snake) {
+        $pack_node->field_snake['und'][0]['value'] = 0;
+      }
+      //IF LAST DRAFTER AND BOX IS UNCHECKED, CHECK BOX AND KEEP SEAT NUMBER AS LAST DRAFTER
+      if($seat_number == $seat_count && !$snake) {
+        $pack_node->field_snake['und'][0]['value'] = 1;
+      }
+      //IF LAST DRAFTER AND BOX IS CHECKED, SEAT NUMBER --
+      if($seat_number == $seat_count && $snake) {
+        $seat_number--;
+      }
     }
     else {
       if ($five_by_nine) {

@@ -76,3 +76,4 @@ docroot/includes/*
 /docroot/error_log
 /docroot/.result.it_upgrade.php
 /docroot/.ftpquota
+*.sql
