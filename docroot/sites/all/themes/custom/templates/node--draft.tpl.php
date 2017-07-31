@@ -137,30 +137,57 @@ if (isset($result['node'])) {
   }
 }
 
-if ($pick_count == 45) {
+$rochester = FALSE;
+if (isset($pack_node->field_pick_number['und']) && isset($node->field_rochester['und']) && $node->field_rochester['und'][0]['value'] == 1) {
+  $rochester = TRUE;
+  $pick_count = $pack_node->field_pick_number['und'][0]['value'];
+}
+
+$draft_finished = FALSE;
+if ($rochester) {
+  if (isset($pack_node->field_pick_number['und']) && $pack_node->field_pick_number['und'][0]['value'] > $node->field_card_count['und'][0]['value']) {
+    $draft_finished = TRUE;
+  }
+}
+else {
+  if ($pick_count == 45) {
+    $draft_finished = TRUE;
+  }
+}
+
+if ($draft_finished) {
   print draft_system_picks_viewer($node, $user->uid);
 }
 
 $block = module_invoke('mtg_helper', 'block_view', 'mana_symbols');
 $mana_symbols = '<div id="#block-mtg-helper-mana-symbols">' . render($block['content']) . '</div>';
 
+if ($rochester) {
+  $is_my_pick = (isset($pack_node->uid) && $pack_node->uid == $user->uid);
+}
+else {
+  $is_my_pick = (isset($pack_node->field_pick_number['und']) && ($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value']);
+}
+
 ?>
 
-<article id="node-<?php print $node->nid; ?>" class="col-xs-12<?php print ($pick_count < 45 ? ' col-sm-10 ' : ''); print $classes; ?>"<?php print $attributes; ?>>
+<article id="node-<?php print $node->nid; ?>"
+         class="col-xs-12<?php print (!$draft_finished ? ' col-sm-10 ' : '');
+         print $classes; ?>"<?php print $attributes; ?>>
+    <?php if (isset($pack_node->nid)) : ?>
     <div id="pack-<?php print $pack_node->nid; ?>" class="pack-wrapper">
-      <?php print (($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value'] ? '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid) : ($pick_count < 45 ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : '')); ?>
+      <?php print ($is_my_pick ? '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid) : (!$draft_finished ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : '')); ?>
     </div>
+    <?php endif; ?>
     <div id="picks-wrapper">
       <?php print ($pick_count > 0 ? '<h2>Your picks</h2>' . views_embed_view('draft_pack', 'page_1', $picks) : '<h2>Your picks</h2>No picks yet.'); ?>
     </div>
 </article>
 
-<?php if ($pick_count < 45): ?>
+<?php if (!$draft_finished): ?>
     <div class="col-xs-12 col-sm-2">
-      <?php
-      print draft_system_seats_viewer($node->nid);
-      print '<h2>Pick Count</h2><div class="pick-count-wrapper">' . $pick_count . '</div>';
-      ?>
+      <?php print draft_system_seats_viewer($node->nid); ?>
+      <h2>Pick Count</h2><div class="pick-count-wrapper"><?php print $pick_count; ?></div>
     </div>
 <?php endif; ?>
 
