@@ -204,10 +204,12 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
   $query
     ->entityCondition('entity_type', 'node')
     ->entityCondition('bundle', 'draft_pack')
-    ->propertyCondition('uid', $drafteruid)
     ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=')
     ->fieldOrderBy('field_pick_number', 'value', 'ASC')
     ->range(0, 1);
+  if (!$rochester) {
+    $query->propertyCondition('uid', $drafteruid);
+  }
   $result = $query->execute();
   $cards = '';
   $delimeter = '';
@@ -224,25 +226,25 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
   }
 
   if (isset($pack_node->field_pick_number['und'])) {
-    if ($rochester) {
-      $cube_size = $draft_node->field_card_count['und'][0]['value'];
-      if($cube_size  == $pack_node->field_pick_number['und'][0]['value']) {
-        return ['content' => '<h2>Draft Complete</h2>', 'packnid' => 'null'];
-      }
-      else {
-        return ['content' => 'no content', 'packnid' => 'null', 'pickcount' => $pack_node->field_pick_number['und'][0]['value']];
-      }
+
+    if (($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value'] && $pack_node->uid == $drafteruid) {
+      return [
+        'content' => '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $result_node->nid, $draftnid),
+        'packnid' => $pack_node->nid,
+      ];
     }
     else {
-
-      if (($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value']) {
-        return [
-          'content' => '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $result_node->nid, $draftnid),
-          'packnid' => $pack_node->nid,
-        ];
-      }
-      else {
-        return ['content' => 'no content', 'packnid' => 'null'];
+      if ($rochester) {
+        $cube_size = $draft_node->field_card_count['und'][0]['value'];
+        if ($cube_size == $pack_node->field_pick_number['und'][0]['value']) {
+          return ['content' => '<h2>Draft Complete</h2>', 'packnid' => 'null'];
+        }
+        else {
+          return [
+            'content' => 'no content',
+            'packnid' => 'null',
+          ];
+        }
       }
     }
   }
@@ -313,15 +315,17 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
     if ($rochester) {
       //NEEDS TO SNAKE & MAKE SURE WHEEL PICKS TWICE
       $snake = $pack_node->field_snake['und'][0]['value'];
-      if($seat_number == 1) {
+      if ($seat_number == 1) {
         if (!$snake) {
           //IF FIRST DRAFTER AND BOX IS UNCHECKED, SEAT NUMBER ++
           $seat_number++;
-        } else {
+        }
+        else {
           //IF FIRST DRAFTER AND BOX IS CHECKED, UNCHECK BOX AND KEEP SEAT NUMBER AS FIRST DRAFTER
           $pack_node->field_snake['und'][0]['value'] = 0;
         }
-      } else {
+      }
+      else {
         //IF LAST DRAFTER AND BOX IS UNCHECKED, CHECK BOX AND KEEP SEAT NUMBER AS LAST DRAFTER
         if ($seat_number == $seat_count && !$snake) {
           $pack_node->field_snake['und'][0]['value'] = 1;
@@ -593,7 +597,7 @@ function draft_system_seats_viewer($draftnid) {
       if ($five_by_nine) {
         $pack_number = ($pick_number < 10 ? 1 : ($pick_number < 19 ? 2 : ($pick_number < 28 ? 3 : ($pick_number < 37 ? 4 : 5))));
       }
-      elseif ($rochester) {
+      else if ($rochester) {
         $pack_number = 1;
       }
       else {
@@ -612,7 +616,7 @@ function draft_system_seats_viewer($draftnid) {
         ->entityCondition('bundle', 'draft_pack')
         ->propertyCondition('uid', $seat_node->uid)
         ->fieldCondition('field_draft_reference', 'nid', $draftnid, '=');
-      if(!$rochester) {
+      if (!$rochester) {
         $query->fieldCondition('field_pick_number', 'value', ($pack_number * ($five_by_nine ? 9 : 15)), '<=');
         $query->fieldOrderBy('field_pick_number', 'value', 'ASC');
       }

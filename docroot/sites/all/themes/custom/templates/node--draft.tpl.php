@@ -174,11 +174,9 @@ else {
 <article id="node-<?php print $node->nid; ?>"
          class="col-xs-12<?php print (!$draft_finished ? ' col-sm-10 ' : '');
          print $classes; ?>"<?php print $attributes; ?>>
-    <?php if (isset($pack_node->nid)) : ?>
-    <div id="pack-<?php print $pack_node->nid; ?>" class="pack-wrapper">
-      <?php print ($is_my_pick ? '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid) : (!$draft_finished ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : '')); ?>
+    <div<?php echo (isset($pack_node->nid) ? ' id="pack-' . $pack_node->nid . '"' : ''); ?> class="pack-wrapper">
+      <?php print ($is_my_pick ? '<h2>Your pack</h2>' . (isset($pack_node->nid) ? views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid) : '') : (!$draft_finished ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : '')); ?>
     </div>
-    <?php endif; ?>
     <div id="picks-wrapper">
       <?php print ($pick_count > 0 ? '<h2>Your picks</h2>' . views_embed_view('draft_pack', 'page_1', $picks) : '<h2>Your picks</h2>No picks yet.'); ?>
     </div>
