@@ -216,7 +216,7 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
   if (isset($result['node'])) {
     foreach ($result['node'] as $result_node) {
       $pack_node = node_load($result_node->nid);
-      if (isset($pack_node->field_card['und'])) {
+      if (isset($pack_node->field_card['und']) && !$rochester) {
         foreach ($pack_node->field_card['und'] as $card_info) {
           $cards .= $delimeter . $card_info['nid'];
           $delimeter = '+';
@@ -225,28 +225,37 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
     }
   }
 
-  if (isset($pack_node->field_pick_number['und'])) {
+  if (isset($pack_node->nid)) {
 
-    if (($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value'] && $pack_node->uid == $drafteruid) {
+    if ($rochester) {
+      $cube_size = $draft_node->field_card_count['und'][0]['value'];
+      if ($cube_size == $pack_node->field_pick_number['und'][0]['value']) {
+        return ['content' => '<h2>Draft Complete</h2>', 'packnid' => 'null'];
+      }
+      $view_display = 'block_2';
+      $contextual_filter = $pack_node->nid;
+    }
+    if ($pack_node->uid == $drafteruid) {
+      $view_name = 'draft_pack';
+      $view_display = 'default';
+      $contextual_filter = $cards;
+      if ($rochester) {
+        $view_name = 'cards';
+        $view_display = 'page_3';
+        $contextual_filter = '';
+      }
       return [
-        'content' => '<h2>Your pack</h2>' . views_embed_view('draft_pack', 'default', $cards, $result_node->nid, $draftnid),
+        'content' => '<h2>Your pack</h2>' . views_embed_view($view_name, $view_display, $contextual_filter, $pack_node->nid, $draftnid),
         'packnid' => $pack_node->nid,
       ];
     }
     else {
-      if ($rochester) {
-        $cube_size = $draft_node->field_card_count['und'][0]['value'];
-        if ($cube_size == $pack_node->field_pick_number['und'][0]['value']) {
-          return ['content' => '<h2>Draft Complete</h2>', 'packnid' => 'null'];
-        }
-        else {
-          return [
-            'content' => 'no content',
-            'packnid' => 'null',
-          ];
-        }
-      }
+      return [
+        'content' => 'no content',
+        'packnid' => 'null',
+      ];
     }
+
   }
 }
 

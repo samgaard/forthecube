@@ -170,19 +170,33 @@ else {
 }
 
 ?>
+<?php if (!$draft_finished && $rochester): ?>
+    <div class="col-xs-12">
+        <div class="col-xs-12 col-sm-2"><?php print draft_system_seats_viewer($node->nid); ?></div>
+        <div class="col-xs-12 col-sm-2"><h2>Pick Count</h2><div class="pick-count-wrapper"><?php print $pick_count; ?></div></div>
+    </div>
+<?php endif; ?>
 
 <article id="node-<?php print $node->nid; ?>"
-         class="col-xs-12<?php print (!$draft_finished ? ' col-sm-10 ' : '');
+         class="col-xs-12<?php print (!$draft_finished && !$rochester ? ' col-sm-10 ' : ' ');
          print $classes; ?>"<?php print $attributes; ?>>
     <div<?php echo (isset($pack_node->nid) ? ' id="pack-' . $pack_node->nid . '"' : ''); ?> class="pack-wrapper">
-      <?php print ($is_my_pick ? '<h2>Your pack</h2>' . (isset($pack_node->nid) ? views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid) : '') : (!$draft_finished ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : '')); ?>
+      <?php
+      $view_args = [];
+      if($rochester) {
+        $pack_view = views_embed_view('cards', 'page_3', $pack_node->nid);
+      } else {
+        $pack_view = views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid);
+      }
+      ?>
+      <?php print ($is_my_pick ? '<h2>Your pack</h2>' . (isset($pack_node->nid) ? $pack_view : '') : (!$draft_finished ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : '')); ?>
     </div>
     <div id="picks-wrapper">
       <?php print ($pick_count > 0 ? '<h2>Your picks</h2>' . views_embed_view('draft_pack', 'page_1', $picks) : '<h2>Your picks</h2>No picks yet.'); ?>
     </div>
 </article>
 
-<?php if (!$draft_finished): ?>
+<?php if (!$draft_finished && !$rochester): ?>
     <div class="col-xs-12 col-sm-2">
       <?php print draft_system_seats_viewer($node->nid); ?>
       <h2>Pick Count</h2><div class="pick-count-wrapper"><?php print $pick_count; ?></div>
