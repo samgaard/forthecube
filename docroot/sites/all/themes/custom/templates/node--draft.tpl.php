@@ -113,14 +113,21 @@ if (isset($picks_node->field_seat_picks['und'])) {
   }
 }
 
+$rochester = FALSE;
+if (isset($node->field_rochester['und']) && $node->field_rochester['und'][0]['value'] == 1) {
+  $rochester = TRUE;
+}
+
 $query = new EntityFieldQuery();
 $query
   ->entityCondition('entity_type', 'node')
   ->entityCondition('bundle', 'draft_pack')
-  ->propertyCondition('uid', $user->uid)
   ->fieldCondition('field_draft_reference', 'nid', $node->nid, '=')
   ->fieldOrderBy('field_pick_number', 'value', 'ASC')
   ->range(0, 1);
+if (!$rochester) {
+  $query->propertyCondition('uid', $user->uid);
+}
 $result = $query->execute();
 $cards = '';
 $delimeter = '';
@@ -128,7 +135,7 @@ if (isset($result['node'])) {
   foreach ($result['node'] as $result_node) {
     //watchdog('test', '$result_node->nid = ' . $result_node->nid);
     $pack_node = node_load($result_node->nid);
-    if (isset($pack_node->field_card['und'])) {
+    if (isset($pack_node->field_card['und']) && !$rochester) {
       foreach ($pack_node->field_card['und'] as $card_info) {
         $cards .= $delimeter . $card_info['nid'];
         $delimeter = '+';
@@ -137,22 +144,10 @@ if (isset($result['node'])) {
   }
 }
 
-$rochester = FALSE;
-if (isset($pack_node->field_pick_number['und']) && isset($node->field_rochester['und']) && $node->field_rochester['und'][0]['value'] == 1) {
-  $rochester = TRUE;
-  $pick_count = $pack_node->field_pick_number['und'][0]['value'];
-}
 
 $draft_finished = FALSE;
-if ($rochester) {
-  if (isset($pack_node->field_pick_number['und']) && $pack_node->field_pick_number['und'][0]['value'] > $node->field_card_count['und'][0]['value']) {
-    $draft_finished = TRUE;
-  }
-}
-else {
-  if ($pick_count == 45) {
-    $draft_finished = TRUE;
-  }
+if ($pick_count == 45) {
+  $draft_finished = TRUE;
 }
 
 if ($draft_finished) {
@@ -163,7 +158,7 @@ $block = module_invoke('mtg_helper', 'block_view', 'mana_symbols');
 $mana_symbols = '<div id="#block-mtg-helper-mana-symbols">' . render($block['content']) . '</div>';
 
 if ($rochester) {
-  $is_my_pick = (isset($pack_node->uid) && $pack_node->uid == $user->uid);
+  $is_my_pick = ($pack_node->uid == $user->uid);
 }
 else {
   $is_my_pick = (isset($pack_node->field_pick_number['und']) && ($pick_count + 1) == $pack_node->field_pick_number['und'][0]['value']);
@@ -173,33 +168,39 @@ else {
 <?php if (!$draft_finished && $rochester): ?>
     <div class="col-xs-12">
         <div class="col-xs-12 col-sm-2"><?php print draft_system_seats_viewer($node->nid); ?></div>
-        <div class="col-xs-12 col-sm-2"><h2>Pick Count</h2><div class="pick-count-wrapper"><?php print $pick_count; ?></div></div>
+        <div class="col-xs-12 col-sm-2"><h2>Pick Count</h2>
+            <div class="pick-count-wrapper"><?php print $pick_count; ?></div>
+        </div>
     </div>
 <?php endif; ?>
 
 <article id="node-<?php print $node->nid; ?>"
          class="col-xs-12<?php print (!$draft_finished && !$rochester ? ' col-sm-10 ' : ' ');
          print $classes; ?>"<?php print $attributes; ?>>
-    <div<?php echo (isset($pack_node->nid) ? ' id="pack-' . $pack_node->nid . '"' : ''); ?> class="pack-wrapper">
+    <div<?php echo(isset($pack_node->nid) ? ' id="pack-' . $pack_node->nid . '"' : ''); ?>
+            class="pack-wrapper">
       <?php
-      $view_args = [];
-      if($rochester) {
-        $pack_view = views_embed_view('cards', 'page_3', $pack_node->nid);
-      } else {
-        $pack_view = views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid);
+
+      if ($rochester) {
+          print '<h2>The Cube</h2>' . (isset($pack_node->nid) ? views_embed_view('cards', 'page_3', $pack_node->nid) : '')  . (!$is_my_pick ? '<div id="no-picks"><h2>Not currently your pick.</h2></div>' : '');
       }
+      else {
+          print ($is_my_pick ? '<h2>Your pack</h2>' . (isset($pack_node->nid) ? views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid) : '') : (!$draft_finished ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : ''));
+      }
+
       ?>
-      <?php print ($is_my_pick ? '<h2>Your pack</h2>' . (isset($pack_node->nid) ? $pack_view : '') : (!$draft_finished ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : '')); ?>
+
     </div>
     <div id="picks-wrapper">
-      <?php print ($pick_count > 0 ? '<h2>Your picks</h2>' . views_embed_view('draft_pack', 'page_1', $picks) : '<h2>Your picks</h2>No picks yet.'); ?>
+      <?php print ($rochester ? draft_system_picks_viewer($node, $user->uid) : ($pick_count > 0 ? '<h2>Your picks</h2>' . views_embed_view('draft_pack', 'page_1', $picks) : '<h2>Your picks</h2>No picks yet.')); ?>
     </div>
 </article>
 
 <?php if (!$draft_finished && !$rochester): ?>
     <div class="col-xs-12 col-sm-2">
       <?php print draft_system_seats_viewer($node->nid); ?>
-      <h2>Pick Count</h2><div class="pick-count-wrapper"><?php print $pick_count; ?></div>
+        <h2>Pick Count</h2>
+        <div class="pick-count-wrapper"><?php print $pick_count; ?></div>
     </div>
 <?php endif; ?>
 

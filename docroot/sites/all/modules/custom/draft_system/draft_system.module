@@ -196,7 +196,7 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
     $rochester = TRUE;
   }
 
-  if ($pick_count == 45 && !$rochester) {
+  if ($pick_count == 45) {
     return ['content' => '<h2>Draft Complete</h2>', 'packnid' => 'null'];
   }
 
@@ -227,36 +227,23 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
 
   if (isset($pack_node->nid)) {
 
-    if ($rochester) {
-      $cube_size = $draft_node->field_card_count['und'][0]['value'];
-      if ($cube_size == $pack_node->field_pick_number['und'][0]['value']) {
-        return ['content' => '<h2>Draft Complete</h2>', 'packnid' => 'null'];
-      }
-      $view_display = 'block_2';
-      $contextual_filter = $pack_node->nid;
-    }
-    if ($pack_node->uid == $drafteruid) {
-      $view_name = 'draft_pack';
-      $view_display = 'default';
-      $contextual_filter = $cards;
-      if ($rochester) {
-        $view_name = 'cards';
-        $view_display = 'page_3';
-        $contextual_filter = '';
-      }
-      return [
-        'content' => '<h2>Your pack</h2>' . views_embed_view($view_name, $view_display, $contextual_filter, $pack_node->nid, $draftnid),
-        'packnid' => $pack_node->nid,
-      ];
-    }
-    else {
+    if($rochester) {
+      $pack_view = views_embed_view('cards', 'page_3', $pack_node->nid);
+    } elseif ($pack_node->uid == $drafteruid) {
+      $pack_view = views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $draftnid);
+    } else {
       return [
         'content' => 'no content',
         'packnid' => 'null',
       ];
     }
 
-  }
+    return [
+        'content' => '<h2>Your pack</h2>' . $pack_view,
+        'packnid' => $pack_node->nid,
+      ];
+    }
+
 }
 
 function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
@@ -335,13 +322,23 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
         }
       }
       else {
-        //IF LAST DRAFTER AND BOX IS UNCHECKED, CHECK BOX AND KEEP SEAT NUMBER AS LAST DRAFTER
-        if ($seat_number == $seat_count && !$snake) {
-          $pack_node->field_snake['und'][0]['value'] = 1;
-        }
-        //IF LAST DRAFTER AND BOX IS CHECKED, SEAT NUMBER --
-        if ($seat_number == $seat_count && $snake) {
-          $seat_number--;
+        if($seat_number == $seat_count) {
+          //IF LAST DRAFTER AND BOX IS UNCHECKED, CHECK BOX AND KEEP SEAT NUMBER AS LAST DRAFTER
+          if (!$snake) {
+            $pack_node->field_snake['und'][0]['value'] = 1;
+          }
+          //IF LAST DRAFTER AND BOX IS CHECKED, SEAT NUMBER --
+          if ($snake) {
+            $seat_number--;
+          }
+        } else {
+          if ($seat_number != 1 && $seat_number != $seat_count) {
+            if(!$snake) {
+              $seat_number++;
+            } else {
+              $seat_number--;
+            }
+          }
         }
       }
     }
@@ -736,7 +733,18 @@ function draft_system_picks_viewer($node, $uid) {
     }
   }
 
+  global $user;
+
+  $default_seat = 1;
+  foreach ($seat_options as $seat_key => $seat_option) {
+    $username  = explode('- ', $seat_option);
+    if($user->name == $username[1]) {
+      $default_seat = $seat_key;
+    }
+  }
+
   $pick_options = [];
+
   /*
 
     foreach(node_revision_list($picks_node) as $revision) {
@@ -759,6 +767,7 @@ function draft_system_picks_viewer($node, $uid) {
     '#type' => 'select',
     '#title' => t('Seat Number'),
     '#options' => $seat_options,
+    '#default_value' => $default_seat,
     '#attributes' => [
       'id' => 'seat_number',
     ],
