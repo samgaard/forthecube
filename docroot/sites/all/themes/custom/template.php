@@ -68,6 +68,10 @@ function custom_preprocess_comment(&$variables) {
 
 function custom_preprocess_html(&$vars) {
   global $user;
+	$page_data = menu_get_object();
+  if(isset($page_data->field_rochester) && $page_data->field_rochester['und'][0]['value'] == 1) {
+    $vars['classes_array'][] = 'rochester';
+  }
 	$vars['classes_array'][] = 'uid-' . $user->uid;
 }
 
