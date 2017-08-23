@@ -227,11 +227,13 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
 
   if (isset($pack_node->nid)) {
 
-    if($rochester) {
+    if ($rochester) {
       $pack_view = views_embed_view('cards', 'page_3', $pack_node->nid);
-    } elseif ($pack_node->uid == $drafteruid) {
+    }
+    else if ($pack_node->uid == $drafteruid) {
       $pack_view = views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $draftnid);
-    } else {
+    }
+    else {
       return [
         'content' => 'no content',
         'packnid' => 'null',
@@ -322,7 +324,7 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
         }
       }
       else {
-        if($seat_number == $seat_count) {
+        if ($seat_number == $seat_count) {
           //IF LAST DRAFTER AND BOX IS UNCHECKED, CHECK BOX AND KEEP SEAT NUMBER AS LAST DRAFTER
           if (!$snake) {
             $pack_node->field_snake['und'][0]['value'] = 1;
@@ -331,11 +333,13 @@ function draft_system_pick_card($cardnid = 0, $packnid = 0, $drafteruid = 0) {
           if ($snake) {
             $seat_number--;
           }
-        } else {
+        }
+        else {
           if ($seat_number != 1 && $seat_number != $seat_count) {
-            if(!$snake) {
+            if (!$snake) {
               $seat_number++;
-            } else {
+            }
+            else {
               $seat_number--;
             }
           }
@@ -603,11 +607,13 @@ function draft_system_seats_viewer($draftnid) {
       if ($five_by_nine) {
         $pack_number = ($pick_number < 10 ? 1 : ($pick_number < 19 ? 2 : ($pick_number < 28 ? 3 : ($pick_number < 37 ? 4 : 5))));
       }
-      else if ($rochester) {
-        $pack_number = 1;
-      }
       else {
-        $pack_number = ($pick_number < 16 ? 1 : ($pick_number < 31 ? 2 : 3));
+        if ($rochester) {
+          $pack_number = 1;
+        }
+        else {
+          $pack_number = ($pick_number < 16 ? 1 : ($pick_number < 31 ? 2 : 3));
+        }
       }
 
       $account = user_load($seat_node->uid);
@@ -737,8 +743,8 @@ function draft_system_picks_viewer($node, $uid) {
 
   $default_seat = 1;
   foreach ($seat_options as $seat_key => $seat_option) {
-    $username  = explode('- ', $seat_option);
-    if($user->name == $username[1]) {
+    $username = explode('- ', $seat_option);
+    if ($user->name == $username[1]) {
       $default_seat = $seat_key;
     }
   }
