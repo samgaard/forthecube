@@ -600,6 +600,7 @@ function draft_system_seats_viewer($draftnid) {
     ->fieldOrderBy('field_seatnumber', 'value', 'ASC');
   $seats_results = $seats_query->execute();
   if (isset($seats_results['node'])) {
+    $count = 0;
     foreach ($seats_results['node'] as $seats_results_node) {
       $seat_node = node_load($seats_results_node->nid);
       $pick_number = (isset($seat_node->field_seat_picks['und']) ? count($seat_node->field_seat_picks['und']) + 1 : 1);
@@ -639,8 +640,16 @@ function draft_system_seats_viewer($draftnid) {
         $pack_dots .= '<div class="pack-dot">&nbsp;</div>';
       }
 
+      $wheel = false;
+      if($rochester) {
+        $count++;
+        if($count == 1 || $count == count($seats_results['node'])) {
+          $wheel = true;
+        }
+      }
+
       $content .= '<div class="drafter-wrapper">';
-      $content .= '<div class="pack-dots-wrapper">' . $pack_dots . '</div>';
+      $content .= '<div class="pack-dots-wrapper">' . $pack_dots . ($wheel ? '<div class="wheel-dot pack-dot"><span>w</span></div>' : '') . '</div>';
       $content .= '<a class="user-picture" data-original-title="' . $profile_info . '" data-html="true" data-placement="right" href="#" data-toggle="tooltip" title="">' . theme('image', ['path' => $picture]) . '</a>';
       $content .= '</div>';
     }
@@ -712,14 +721,20 @@ function draft_system_generate_picks($nid = 0, $uid = 0, $pick = NULL) {
 	return $content;
 }
 
-function draft_system_form_alter(&$form, &$form_state, $form_id) { //print_r($form_id);
-	switch($form_id) {
-		case 'draft_node_form':
-
-		break;
-	}
-}
 */
+
+function draft_system_form_alter(&$form, &$form_state, $form_id) { //print_r($form_id);
+  switch($form_id) {
+    case 'views_exposed_form':
+      if($form_state['view']->current_display == 'page_3') {
+        $packnid = $form_state['view']->args[0];
+        $packnode = node_load($packnid);
+        $draftnid = $packnode->field_draft_reference['und'][0]['nid'];
+        $form['#action'] = '/node/' . $draftnid;
+      }
+      break;
+  }
+}
 
 function draft_system_picks_viewer($node, $uid) {
   $picks_query = new EntityFieldQuery();
