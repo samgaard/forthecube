@@ -77,3 +77,11 @@ docroot/includes/*
 /docroot/.result.it_upgrade.php
 /docroot/.ftpquota
 *.sql
+/docroot/README.txt
+/docroot/MAINTAINERS.txt
+/docroot/LICENSE.txt
+/docroot/COPYRIGHT.txt
+/docroot/CHANGELOG.txt
+/docroot/.gitignore
+/docroot/.editorconfig
+/docroot/UPGRADE.txt
