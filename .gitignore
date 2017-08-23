@@ -44,7 +44,6 @@ docroot/sites/all/themes/zurb-foundation/*
 docroot/sites/all/themes/bootstrap/*
 docroot/sites/all/themes/custom/bootstrap/*
 docroot/sites/all/themes/custom/images/*
-docroot/sites/all/themes/custom/css/*
 docroot/sites/all/themes/custom/favicon.ico
 docroot/sites/all/themes/custom/README.txt
 /docroot/sites/default/settings.php
