@@ -36,9 +36,13 @@
             var draftnid = $('.node.node-draft').attr('id').replace('node-', '');
             var drafteruid = $('body').attr('class').split('uid-')[1].split(' ')[0];
 
-            updateDraftViewer(draftnid);
+            console.log('calling updateDraftViewer with data.draftnid = ' + draftnid + ' and data.drafteruid = ' + drafteruid);
+            updateDraftViewer(draftnid, drafteruid);
+            if($('#pick-list-div').length) {
+                picksViewer(draftnid, 1, 1);
+            }
 
-            if ($('#no-picks').length) {
+            if ($('#no-picks').length && !$('body').hasClass('rochester')) {
                 checkForPicks(draftnid, drafteruid);
             }
         }
@@ -88,7 +92,7 @@
 
 function checkForPicks(draftnid, drafteruid) {
     setTimeout(function () {
-        if (jQuery('#no-picks').length) {
+        if (jQuery('#no-picks').length && !$('body').hasClass('rochester')) {
             checkforpack(draftnid, drafteruid);
         }
     }, 3000);
@@ -175,11 +179,14 @@ function draftpick(cardnid, packnid, draftnid, drafteruid) {
             if (data.content == 'error') {
                 location.reload(true);
             } else {
+                console.log(data.content);
                 clearInterval(refreshIntervalId);
                 jQuery('#block-system-main').html(data.content);
-                if (jQuery('.node.node-draft #no-picks').length) {
+                //if (jQuery('.node.node-draft #no-picks').length && !$('body').hasClass('rochester')) {
+                    console.log('calling updateDraftViewer & checkForPicks with data.draftnid = ' + data.draftnid + ' and data.drafteruid = ' + data.drafteruid);
+                    updateDraftViewer(data.draftnid, data.drafteruid);
                     checkForPicks(data.draftnid, data.drafteruid);
-                }
+                //}
             }
         },
         error: function (xmlhttp) {
@@ -214,32 +221,43 @@ function checkforpack(draftnid, drafteruid) {
     });
 }
 
-function updateDraftViewer(draftnid) {
+function updateDraftViewer(draftnid, drafteruid) {
+    console.log('in updateDraftViewer with draftnid = ' + draftnid + ' and drafteruid = ' + drafteruid);
+
     jQuery.ajax({
         type: "POST",
         url: '/js/get-seat-viewer',
         dataType: "json",
         data: {
             'draftnid': draftnid,
+            'drafteruid': drafteruid
         },
         success: function (data) {
+            console.log('in success of updateDraftViewer with data = ' + draftnid);
+            if(data.drafteruid == drafteruid) {
+                checkforpack(draftnid, drafteruid);
+                console.log('calling checkforpack with data.draftnid = ' + draftnid + ' and data.drafteruid = ' + data.drafteruid);
+            } else {
+                console.log('setting timeout to check seats again');
+                setTimeout(function () {
+                    updateDraftViewer(draftnid, drafteruid);
+                }, 5000);
+            }
+
             jQuery('#draft-seats-wrapper').html(data.content);
             layoutdraftseats();
         },
         error: function (xmlhttp) {
         }
     });
-    setTimeout(function () {
-        updateDraftViewer(draftnid);
-    }, 5000);
 }
 
 function picksViewer(draftid, seatid, picknumber) {
-    jQuery('#picks-wrapper').html('<h2>Getting Pick.</h2>');
+    jQuery('#pick-list-div').html('<h2>Getting Pick.</h2>');
     var i = 0;
     var text = "Getting Pick";
     var refreshIntervalId = setInterval(function () {
-        jQuery('#picks-wrapper').html('<h2>' + text + Array((++i % 4) + 1).join(".") + '</h2>');
+        jQuery('#pick-list-div').html('<h2>' + text + Array((++i % 4) + 1).join(".") + '</h2>');
     }, 100);
 
     jQuery.ajax({
@@ -254,8 +272,11 @@ function picksViewer(draftid, seatid, picknumber) {
         success: function (data) {
             if (data.content != '') {
                 clearInterval(refreshIntervalId);
-                jQuery('#picks-wrapper').html(data.content);
+                jQuery('#pick-list-div').html(data.content);
                 jQuery('.nid-' + data.picknid + ' img').addClass('picked-card');
+                jQuery('html, body').animate({
+                    scrollTop: jQuery("#pick-list-div").offset().top
+                }, 500);
             }
         },
         error: function (xmlhttp) {

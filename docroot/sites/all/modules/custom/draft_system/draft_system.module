@@ -46,8 +46,8 @@ function draft_system_menu() {
 }
 
 function draft_system_seat_viewer_js() {
-  $seats = draft_system_seats_viewer($_POST['draftnid']);
-  drupal_json_output(['status' => 1, 'content' => $seats]);
+  $seats = draft_system_seats_viewer($_POST['draftnid'], $_POST['drafteruid']);
+  drupal_json_output(['status' => 1, 'content' => $seats['content'], 'drafteruid' => $seats['drafteruid']]);
 }
 
 function draft_system_get_next_pack_js() {
@@ -86,70 +86,83 @@ function draft_system_draft_viewer_js() {
 function draft_system_draft_viewer($draftid, $seatnumber, $picknumber) {
   $content = '';
 
-  if ($picknumber > 1) {
-    $content .= '<a id="draft-viewer-back-button" class="btn btn-primary" href="javascript:void(0);" onclick="picksViewer(' . $draftid . ', ' . $seatnumber . ', ' . ($picknumber - 1) . ');">Back</a>';
-  }
-  if ($picknumber < 45) {
-    $content .= '<a id="draft-viewer-forward-button" class="btn btn-primary" href="javascript:void(0);" onclick="picksViewer(' . $draftid . ', ' . $seatnumber . ', ' . ($picknumber + 1) . ');">Forward</a>';
+  $draft_node = node_load($draftid);
+
+  $rochester = FALSE;
+  if (isset($draft_node->field_rochester['und']) && $draft_node->field_rochester['und'][0]['value'] == 1) {
+    $rochester = TRUE;
   }
 
-  $draft_node = node_load($draftid);
+  if(!$rochester) {
+    if ($picknumber > 1) {
+      $content .= '<a id="draft-viewer-back-button" class="btn btn-primary" href="javascript:void(0);" onclick="picksViewer(' . $draftid . ', ' . $seatnumber . ', ' . ($picknumber - 1) . ');">Back</a>';
+    }
+    if ($picknumber < 45) {
+      $content .= '<a id="draft-viewer-forward-button" class="btn btn-primary" href="javascript:void(0);" onclick="picksViewer(' . $draftid . ', ' . $seatnumber . ', ' . ($picknumber + 1) . ');">Forward</a>';
+    }
+  }
 
   $seatnid = db_query("SELECT nid FROM {node} WHERE LOWER(title) = :title", [":title" => trim(strtolower('Draft ' . $draftid . ' Seat ' . $seatnumber))])->fetchField();
   $seat_node = node_load($seatnid);
-  $seat_revisions = node_revision_list($seat_node);
-
   $seat_picks = '';
   $seat_picks_delimeter = '';
-  foreach ($seat_revisions as $seat_revision) {
-    if ($seat_picks != '') {
-      continue;
+  if($rochester) {
+    foreach ($seat_node->field_seat_picks['und'] as $seat_card) {
+      $seat_picks .= $seat_picks_delimeter . $seat_card['nid'];
+      $seat_picks_delimeter = '+';
     }
-    $seatlogdata = explode('|', $seat_revision->log);
-    if ($seatlogdata != '') {
-      if (str_replace('pick:', '', $seatlogdata[0]) == $picknumber) {
-        $seat_revision_node = node_load($seatnid, $seat_revision->vid);
-        $packnid = str_replace('packnid:', '', $seatlogdata[3]);
-        foreach ($seat_revision_node->field_seat_picks['und'] as $seat_card) {
-          if (str_replace('card:', '', $seatlogdata[2]) != $seat_card['nid']) {
-            $seat_picks .= $seat_picks_delimeter . $seat_card['nid'];
-            $seat_picks_delimeter = '+';
+  }
+  else {
+    $seat_revisions = node_revision_list($seat_node);
+    foreach ($seat_revisions as $seat_revision) {
+      if ($seat_picks != '') {
+        continue;
+      }
+      $seatlogdata = explode('|', $seat_revision->log);
+      if ($seatlogdata != '') {
+        if (str_replace('pick:', '', $seatlogdata[0]) == $picknumber) {
+          $seat_revision_node = node_load($seatnid, $seat_revision->vid);
+          $packnid = str_replace('packnid:', '', $seatlogdata[3]);
+          foreach ($seat_revision_node->field_seat_picks['und'] as $seat_card) {
+            if (str_replace('card:', '', $seatlogdata[2]) != $seat_card['nid']) {
+              $seat_picks .= $seat_picks_delimeter . $seat_card['nid'];
+              $seat_picks_delimeter = '+';
+            }
           }
         }
       }
     }
+    $pack_node = node_load($packnid);
+    $revisions = node_revision_list($pack_node);
+
+    $picks = '';
+    $picks_delimeter = '';
+
+    foreach ($revisions as $revision) {
+      if ($picks != '') {
+        continue;
+      }
+      $logdata = explode('|', $revision->log);
+      if ($logdata != '') {
+        if (str_replace('pick:', '', $logdata[0]) == $picknumber) {
+          $revision_node = node_load($packnid, $revision->vid);
+          foreach ($revision_node->field_card['und'] as $card) {
+            $picks .= $picks_delimeter . $card['nid'];
+            $picks_delimeter = '+';
+          }
+          $picked_card_nid = str_replace('card:', '', $logdata[2]);
+
+          $picks .= $picks_delimeter . $picked_card_nid;
+        }
+      }
+    }
+
+    $content .= '<h2>Draft ' . $draftid . ' Seat ' . $seatnumber . ' Pick ' . $picknumber . '</h2>' . views_embed_view('p1p1', 'default', $picks);
   }
 
 
   $this_seats_picks = ($seat_picks != '' ? '<h2>Picks</h2>' . views_embed_view('draft_pack', 'page_1', $seat_picks) : '');
 
-
-  $pack_node = node_load($packnid);
-  $revisions = node_revision_list($pack_node);
-
-  $picks = '';
-  $picks_delimeter = '';
-
-  foreach ($revisions as $revision) {
-    if ($picks != '') {
-      continue;
-    }
-    $logdata = explode('|', $revision->log);
-    if ($logdata != '') {
-      if (str_replace('pick:', '', $logdata[0]) == $picknumber) {
-        $revision_node = node_load($packnid, $revision->vid);
-        foreach ($revision_node->field_card['und'] as $card) {
-          $picks .= $picks_delimeter . $card['nid'];
-          $picks_delimeter = '+';
-        }
-        $picked_card_nid = str_replace('card:', '', $logdata[2]);
-
-        $picks .= $picks_delimeter . $picked_card_nid;
-      }
-    }
-  }
-
-  $content .= '<h2>Draft ' . $draftid . ' Seat ' . $seatnumber . ' Pick ' . $picknumber . '</h2>' . views_embed_view('p1p1', 'default', $picks);
 
   $content .= $this_seats_picks;
 
@@ -230,21 +243,23 @@ function draft_system_get_next_pack($draftnid, $drafteruid) {
     if ($rochester) {
       $pack_view = views_embed_view('cards', 'page_3', $pack_node->nid);
     }
-    else if ($pack_node->uid == $drafteruid) {
-      $pack_view = views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $draftnid);
-    }
     else {
-      return [
-        'content' => 'no content',
-        'packnid' => 'null',
-      ];
+      if ($pack_node->uid == $drafteruid) {
+        $pack_view = views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $draftnid);
+      }
+      else {
+        return [
+          'content' => 'no content',
+          'packnid' => 'null',
+        ];
+      }
     }
 
     return [
-        'content' => '<h2>Your pack</h2>' . $pack_view,
-        'packnid' => $pack_node->nid,
-      ];
-    }
+      'content' => '<h2>Your pick</h2>' . $pack_view,
+      'packnid' => $pack_node->nid,
+    ];
+  }
 
 }
 
@@ -574,7 +589,7 @@ function draft_system_block_view($delta = '') {
 }
 */
 
-function draft_system_seats_viewer($draftnid) {
+function draft_system_seats_viewer($draftnid, $drafteruid = 0) {
 
   $content = '';
   $content .= '<div id="draft-seats-wrapper">';
@@ -633,27 +648,49 @@ function draft_system_seats_viewer($draftnid) {
         $query->fieldCondition('field_pick_number', 'value', ($pack_number * ($five_by_nine ? 9 : 15)), '<=');
         $query->fieldOrderBy('field_pick_number', 'value', 'ASC');
       }
-      $pack_count = $query->count()->execute();
+      $draft_packs = $query->execute();
+      $pack_count = 0;
+      if(isset($draft_packs['node'])) {
+        $pack_count = count($draft_packs['node']);
+        if ($rochester && $pack_count) {
+          foreach ($draft_packs['node'] as $draft_pack) {
+            $draft_pack_node = node_load($draft_pack->nid);
+            $snake = $draft_pack_node->field_snake['und'][0]['value'];
+            if ($draft_pack_node->uid == $account->uid) {
+              $drafteruid = $account->uid;
+            }
+          }
+        }
+      }
       $profile_info .= '<div>Pending Packs: ' . $pack_count . '</div>';
       $pack_dots = '';
       for ($i = 0; $i < $pack_count; $i++) {
         $pack_dots .= '<div class="pack-dot">&nbsp;</div>';
       }
 
-      $wheel = false;
-      if($rochester) {
+      $wheel = FALSE;
+      if ($rochester) {
         $count++;
-        if($count == 1 || $count == count($seats_results['node'])) {
-          $wheel = true;
+        if ($count == 1 || $count == count($seats_results['node'])) {
+          $wheel = TRUE;
         }
       }
-
+      
       $content .= '<div class="drafter-wrapper">';
       $content .= '<div class="pack-dots-wrapper">' . $pack_dots . ($wheel ? '<div class="wheel-dot pack-dot"><span>w</span></div>' : '') . '</div>';
       $content .= '<a class="user-picture" data-original-title="' . $profile_info . '" data-html="true" data-placement="right" href="#" data-toggle="tooltip" title="">' . theme('image', ['path' => $picture]) . '</a>';
       $content .= '</div>';
     }
   }
+  $direction_arrow = '';
+  if($snake) {
+    $direction_arrow = theme('image', array('path' => '/sites/all/themes/custom/images/untap.png', 'attributes' => array('class' => 'directional-arrow')));
+  } else {
+    $direction_arrow = theme('image', array('path' => '/sites/all/themes/custom/images/tap.png', 'attributes' => array('class' => 'directional-arrow')));
+  }
+
+  $content .= $direction_arrow;
+
   $content .= '</div>';
 
   $content .= "<script>
@@ -662,7 +699,11 @@ function draft_system_seats_viewer($draftnid) {
 	});
 	</script>";
 
-  return $content;
+  return [
+    'content' => $content,
+    'drafteruid' => $drafteruid,
+    'draftnid' => $draftnid
+  ];
 }
 
 /*
@@ -724,9 +765,9 @@ function draft_system_generate_picks($nid = 0, $uid = 0, $pick = NULL) {
 */
 
 function draft_system_form_alter(&$form, &$form_state, $form_id) { //print_r($form_id);
-  switch($form_id) {
+  switch ($form_id) {
     case 'views_exposed_form':
-      if($form_state['view']->current_display == 'page_3') {
+      if ($form_state['view']->current_display == 'page_3') {
         $packnid = $form_state['view']->args[0];
         $packnode = node_load($packnid);
         $draftnid = $packnode->field_draft_reference['und'][0]['nid'];
@@ -766,18 +807,6 @@ function draft_system_picks_viewer($node, $uid) {
 
   $pick_options = [];
 
-  /*
-
-    foreach(node_revision_list($picks_node) as $revision) {
-      if($revision->log != '') {
-        $log = explode('|', $revision->log);
-        $pick_options[$revision->vid] = 'Pick ' . str_replace('pick:', '', $log[0]);
-      }
-    }
-
-    ksort($pick_options);
-
-  */
   for ($i = 1; $i < 46; $i++) {
     $pick_options[$i] = $i;
   }
@@ -808,6 +837,14 @@ function draft_system_picks_viewer($node, $uid) {
     '#value' => t('Submit'),
     '#attributes' => [
       'onclick' => 'picksViewer(' . $node->nid . ', jQuery("#seat_number").val(), jQuery("#pick_number").val()); return false;',
+    ],
+  ];
+
+  $form['picksdiv'] = [
+    '#type' => 'markup',
+    '#markup' => '<div id="pick-list-div"></div>',
+    '#attributes' => [
+      'id' => 'picksdiv',
     ],
   ];
 
