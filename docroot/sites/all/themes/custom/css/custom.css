@@ -713,3 +713,10 @@ h2.title.comment-form {
 .wheel-dot {
 	background: orange;
 }
+
+.directional-arrow {
+	width: 20px;
+	position: absolute;
+	left: 38%;
+	top: 52%;
+}
