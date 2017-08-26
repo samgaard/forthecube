@@ -167,7 +167,9 @@ else {
 ?>
 <?php if (!$draft_finished && $rochester): ?>
     <div class="col-xs-12">
-        <div class="col-xs-12 col-sm-2"><div id="draft-seats-wrapper"></div></div>
+        <div class="col-xs-12 col-sm-2">
+            <div id="draft-seats-wrapper"></div>
+        </div>
         <div class="col-xs-12 col-sm-2"><h2>Pick Count</h2>
             <div class="pick-count-wrapper"><?php print $pick_count; ?></div>
         </div>
@@ -182,10 +184,10 @@ else {
       <?php
 
       if ($rochester) {
-          print '<h2>The Cube</h2>' . (isset($pack_node->nid) ? views_embed_view('cards', 'page_3', $pack_node->nid) : '') ;
+        print '<h2>The Cube</h2>' . (isset($pack_node->nid) ? views_embed_view('cards', 'page_3', $pack_node->nid) : '');
       }
       else {
-          print ($is_my_pick ? '<h2>Your pack</h2>' . (isset($pack_node->nid) ? views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid) : '') : (!$draft_finished ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : ''));
+        print ($is_my_pick ? '<h2>Your pack</h2>' . (isset($pack_node->nid) ? views_embed_view('draft_pack', 'default', $cards, $pack_node->nid, $node->nid) : '') : (!$draft_finished ? '<div id="no-picks"><h2>No packs for you!</h2></div>' : ''));
       }
 
       ?>

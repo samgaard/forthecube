@@ -39,12 +39,14 @@
 
 /* AUTHOR PANE */
 .forum-post-panel-sub .author-pane .picture img {
-    background-color: inherit;
-    border: medium none;
+	background-color: inherit;
+	border: medium none;
 }
+
 .forum-post-panel-sub .author-pane .picture img {
-    padding: 0;
+	padding: 0;
 }
+
 /* END AUTHOR PANE */
 
 /* END FORUMS */
@@ -63,23 +65,24 @@
 	vertical-align: middle;
 	width: 100%;
 }
-	/*
-	height: 196px;
-	overflow: visible;
-	width: 12%;
+
+/*
+height: 196px;
+overflow: visible;
+width: 12%;
 }
 .view.cards .views-row img {
-	height: auto;
-	max-width: 100%;
-	vertical-align: middle;
-	width: 100%;
-	position: relative;
+height: auto;
+max-width: 100%;
+vertical-align: middle;
+width: 100%;
+position: relative;
 }
 .view.cards .views-row img:hover {
-	margin: -30px 0 0 -30px;
-	max-width: inherit;
-	width: auto;
-	z-index: 3;
+margin: -30px 0 0 -30px;
+max-width: inherit;
+width: auto;
+z-index: 3;
 }
 */
 
@@ -102,28 +105,34 @@
 }
 
 @media screen and (max-width: 481px) {
-	.view.cards .views-field-php {
+	.view.cards .views-field-php,
+	.view.cards .views-field-field-full-image {
 		display: none;
 	}
+	
 	.view.cards .views-field-title span a {
 		display: block;
 		white-space: nowrap;
 	}
+	
 	.view.cards .views-row {
-    height: auto;
-		width: auto;	
+		height: auto;
+		width: auto;
 	}
+	
 	.view.cards .views-row {
-    display: block;
+		display: block;
 	}
 	
 	.view.cards .view-content {
-    text-align: left;
+		text-align: left;
 	}
+	
 	.view-cards .views-exposed-widget.views-reset-button,
 	.view-cards .views-exposed-widget.views-submit-button {
-    float: left;
+		float: left;
 	}
+	
 	.view-cards .views-exposed-widget.views-reset-button {
 		clear: none;
 	}
@@ -132,6 +141,7 @@
 		margin-bottom: 0;
 	}
 }
+
 /* END CARDS */
 
 .autocard-wrapper {
@@ -152,6 +162,11 @@
 	max-width: 100%;
 	height: auto;
 }
+
+.view-cards.view-display-id-page_3 .view-filters {
+	margin: 15px 0;
+}
+
 /*
 .view-cards .views-responsive-grid .img-responsive {
 	border: 6px solid #000000;
@@ -222,7 +237,7 @@
 }
 
 #block-mtg-helper-mana-symbols ul.color-filters li {
-	display: inline;
+	display: inline-block;
 	list-style: none outside none;
 }
 
@@ -338,7 +353,7 @@
 }
 
 .admin-menu .post-edited {
-
+	
 	display: block;
 }
 
@@ -414,7 +429,7 @@ h2.title.comment-form {
 	display: none;
 }
 
-.forum-table-wrap, 
+.forum-table-wrap,
 .forum-table-topics {
 	width: 100%;
 }
@@ -447,10 +462,12 @@ h2.title.comment-form {
 	top: 10px;
 	left: 20px
 }
+
 .card-pile .img-responsive.duplicate-2 {
 	top: 20px;
 	left: 25px
 }
+
 .card-pile .img-responsive.duplicate-3 {
 	top: 30px;
 	left: 30px
@@ -503,15 +520,18 @@ h2.title.comment-form {
 		position: absolute;
 		z-index: 1;
 	}
-	.author-pane-general .username, 
+	
+	.author-pane-general .username,
 	.author-pane-general a.username {
-    left: 30px;
+		left: 30px;
 	}
+	
 	.forum-post-panel-main {
 		width: 100% !important;
-	}	
+	}
+	
 	.forum-post-panel-sub {
-    width: 30px;
+		width: 30px;
 		padding-top: 0;
 		margin-top: 5px;
 	}
@@ -527,6 +547,7 @@ h2.title.comment-form {
 	position: relative;
 	z-index: 1;
 }
+
 #pick-options > a {
 	display: inline-block;
 	margin-left: -20px;
@@ -588,7 +609,7 @@ h2.title.comment-form {
 }
 
 .view-draft-pack.view-display-id-page_1 .view-content ul li,
-.view-draft-pack.view-display-id-block_1 .view-content ul li ,
+.view-draft-pack.view-display-id-block_1 .view-content ul li,
 .view-draft-pack.view-display-id-block_3 .view-content ul li {
 	list-style: outside none none;
 	margin-top: -70%;
@@ -596,7 +617,7 @@ h2.title.comment-form {
 
 .view-draft-pack.view-display-id-page_1 .view-content ul li.views-row-first,
 .view-draft-pack.view-display-id-block_1 .view-content ul li.views-row-first,
-.view-draft-pack.view-display-id-block_3 .view-content ul li.views-row-first  {
+.view-draft-pack.view-display-id-block_3 .view-content ul li.views-row-first {
 	margin-top: 0;
 }
 
@@ -636,7 +657,7 @@ h2.title.comment-form {
 	height: 10px;
 	width: 10px;
 	z-index: 1;
-	position:relative;
+	position: relative;
 }
 
 .drafter-wrapper .tooltip {
@@ -697,7 +718,7 @@ h2.title.comment-form {
 }
 
 .footer {
-    border-top: medium none;
+	border-top: medium none;
 }
 
 .rochester .node-draft {
@@ -710,6 +731,7 @@ h2.title.comment-form {
 	top: -9px;
 	left: 1px;
 }
+
 .wheel-dot {
 	background: orange;
 }
@@ -719,4 +741,8 @@ h2.title.comment-form {
 	position: absolute;
 	left: 38%;
 	top: 52%;
+}
+
+.rochester .pick-number-select {
+	display: none;
 }

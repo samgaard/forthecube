@@ -47,7 +47,11 @@ function draft_system_menu() {
 
 function draft_system_seat_viewer_js() {
   $seats = draft_system_seats_viewer($_POST['draftnid'], $_POST['drafteruid']);
-  drupal_json_output(['status' => 1, 'content' => $seats['content'], 'drafteruid' => $seats['drafteruid']]);
+  drupal_json_output([
+    'status' => 1,
+    'content' => $seats['content'],
+    'drafteruid' => $seats['drafteruid'],
+  ]);
 }
 
 function draft_system_get_next_pack_js() {
@@ -93,7 +97,7 @@ function draft_system_draft_viewer($draftid, $seatnumber, $picknumber) {
     $rochester = TRUE;
   }
 
-  if(!$rochester) {
+  if (!$rochester) {
     if ($picknumber > 1) {
       $content .= '<a id="draft-viewer-back-button" class="btn btn-primary" href="javascript:void(0);" onclick="picksViewer(' . $draftid . ', ' . $seatnumber . ', ' . ($picknumber - 1) . ');">Back</a>';
     }
@@ -106,7 +110,7 @@ function draft_system_draft_viewer($draftid, $seatnumber, $picknumber) {
   $seat_node = node_load($seatnid);
   $seat_picks = '';
   $seat_picks_delimeter = '';
-  if($rochester) {
+  if ($rochester) {
     foreach ($seat_node->field_seat_picks['und'] as $seat_card) {
       $seat_picks .= $seat_picks_delimeter . $seat_card['nid'];
       $seat_picks_delimeter = '+';
@@ -650,7 +654,7 @@ function draft_system_seats_viewer($draftnid, $drafteruid = 0) {
       }
       $draft_packs = $query->execute();
       $pack_count = 0;
-      if(isset($draft_packs['node'])) {
+      if (isset($draft_packs['node'])) {
         $pack_count = count($draft_packs['node']);
         if ($rochester && $pack_count) {
           foreach ($draft_packs['node'] as $draft_pack) {
@@ -675,7 +679,7 @@ function draft_system_seats_viewer($draftnid, $drafteruid = 0) {
           $wheel = TRUE;
         }
       }
-      
+
       $content .= '<div class="drafter-wrapper">';
       $content .= '<div class="pack-dots-wrapper">' . $pack_dots . ($wheel ? '<div class="wheel-dot pack-dot"><span>w</span></div>' : '') . '</div>';
       $content .= '<a class="user-picture" data-original-title="' . $profile_info . '" data-html="true" data-placement="right" href="#" data-toggle="tooltip" title="">' . theme('image', ['path' => $picture]) . '</a>';
@@ -683,10 +687,17 @@ function draft_system_seats_viewer($draftnid, $drafteruid = 0) {
     }
   }
   $direction_arrow = '';
-  if($snake) {
-    $direction_arrow = theme('image', array('path' => '/sites/all/themes/custom/images/untap.png', 'attributes' => array('class' => 'directional-arrow')));
-  } else {
-    $direction_arrow = theme('image', array('path' => '/sites/all/themes/custom/images/tap.png', 'attributes' => array('class' => 'directional-arrow')));
+  if ($snake) {
+    $direction_arrow = theme('image', [
+      'path' => '/sites/all/themes/custom/images/untap.png',
+      'attributes' => ['class' => 'directional-arrow'],
+    ]);
+  }
+  else {
+    $direction_arrow = theme('image', [
+      'path' => '/sites/all/themes/custom/images/tap.png',
+      'attributes' => ['class' => 'directional-arrow'],
+    ]);
   }
 
   $content .= $direction_arrow;
@@ -702,7 +713,7 @@ function draft_system_seats_viewer($draftnid, $drafteruid = 0) {
   return [
     'content' => $content,
     'drafteruid' => $drafteruid,
-    'draftnid' => $draftnid
+    'draftnid' => $draftnid,
   ];
 }
 
@@ -772,6 +783,8 @@ function draft_system_form_alter(&$form, &$form_state, $form_id) { //print_r($fo
         $packnode = node_load($packnid);
         $draftnid = $packnode->field_draft_reference['und'][0]['nid'];
         $form['#action'] = '/node/' . $draftnid;
+        $form['#prefix'] = ' <button class="btn btn-primary form-submit" data-toggle="collapse" data-target="#demo">Filters</button><div id="demo" class="collapse">';
+        $form['#suffix'] = '</div><h2>Available Picks</h2>';
       }
       break;
   }
@@ -827,6 +840,8 @@ function draft_system_picks_viewer($node, $uid) {
     '#type' => 'select',
     '#title' => t('Pick Number'),
     '#options' => $pick_options,
+    '#prefix' => '<div class="pick-number-select">',
+    '#suffix' => '</div>',
     '#attributes' => [
       'id' => 'pick_number',
     ],
@@ -842,7 +857,7 @@ function draft_system_picks_viewer($node, $uid) {
 
   $form['picksdiv'] = [
     '#type' => 'markup',
-    '#markup' => '<div id="pick-list-div"></div>',
+    '#markup' => '<div id="draft-seat-default" class="hidden">' . $default_seat . '</div><div id="pick-list-div"></div>',
     '#attributes' => [
       'id' => 'picksdiv',
     ],

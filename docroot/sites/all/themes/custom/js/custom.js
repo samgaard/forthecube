@@ -1,5 +1,4 @@
 (function ($) {
-
     $(document).ready(function () {
         /*
          $('.forum-post').each(function() {
@@ -20,6 +19,7 @@
          }
          */
 
+
         $('.card-link').hover(function () {
             $(this).parent().find('.hidden-card').addClass('show');
         }, function () {
@@ -36,11 +36,9 @@
             var draftnid = $('.node.node-draft').attr('id').replace('node-', '');
             var drafteruid = $('body').attr('class').split('uid-')[1].split(' ')[0];
 
-            console.log('calling updateDraftViewer with data.draftnid = ' + draftnid + ' and data.drafteruid = ' + drafteruid);
+            //console.log('drafteruid = ' + drafteruid);
             updateDraftViewer(draftnid, drafteruid);
-            if($('#pick-list-div').length) {
-                picksViewer(draftnid, 1, 1);
-            }
+
 
             if ($('#no-picks').length && !$('body').hasClass('rochester')) {
                 checkForPicks(draftnid, drafteruid);
@@ -86,6 +84,7 @@
                 $(this).removeClass('on');
             });
         }
+
     });
 
 })(jQuery);
@@ -179,13 +178,13 @@ function draftpick(cardnid, packnid, draftnid, drafteruid) {
             if (data.content == 'error') {
                 location.reload(true);
             } else {
-                console.log(data.content);
+                //console.log(data.content);
                 clearInterval(refreshIntervalId);
                 jQuery('#block-system-main').html(data.content);
                 //if (jQuery('.node.node-draft #no-picks').length && !$('body').hasClass('rochester')) {
-                    console.log('calling updateDraftViewer & checkForPicks with data.draftnid = ' + data.draftnid + ' and data.drafteruid = ' + data.drafteruid);
-                    updateDraftViewer(data.draftnid, data.drafteruid);
-                    checkForPicks(data.draftnid, data.drafteruid);
+                //console.log('calling updateDraftViewer & checkForPicks with data.draftnid = ' + data.draftnid + ' and data.drafteruid = ' + data.drafteruid);
+                updateDraftViewer(data.draftnid, data.drafteruid);
+                checkForPicks(data.draftnid, data.drafteruid);
                 //}
             }
         },
@@ -222,7 +221,7 @@ function checkforpack(draftnid, drafteruid) {
 }
 
 function updateDraftViewer(draftnid, drafteruid) {
-    console.log('in updateDraftViewer with draftnid = ' + draftnid + ' and drafteruid = ' + drafteruid);
+    //console.log('in updateDraftViewer with draftnid = ' + draftnid + ' and drafteruid = ' + drafteruid);
 
     jQuery.ajax({
         type: "POST",
@@ -233,12 +232,21 @@ function updateDraftViewer(draftnid, drafteruid) {
             'drafteruid': drafteruid
         },
         success: function (data) {
-            console.log('in success of updateDraftViewer with data = ' + draftnid);
-            if(data.drafteruid == drafteruid) {
+            //console.log('in success of updateDraftViewer with data = ' + draftnid);
+            if (jQuery('#pick-list-div').length && !jQuery('.view-draft-pack .item-list ul li').length) {
+                if (jQuery('#draft-seat-default').length) {
+                    var seatnumber = jQuery('#draft-seat-default').html();
+                    jQuery('#seat_number').val(seatnumber);
+                } else {
+                    var seatnumber = 1;
+                }
+                picksViewer(draftnid, seatnumber, 1);
+            }
+            if (data.drafteruid == drafteruid && !jQuery('.pickable').length) {
                 checkforpack(draftnid, drafteruid);
-                console.log('calling checkforpack with data.draftnid = ' + draftnid + ' and data.drafteruid = ' + data.drafteruid);
+                //console.log('calling checkforpack with data.draftnid = ' + draftnid + ' and data.drafteruid = ' + data.drafteruid);
             } else {
-                console.log('setting timeout to check seats again');
+                //console.log('setting timeout to check seats again');
                 setTimeout(function () {
                     updateDraftViewer(draftnid, drafteruid);
                 }, 5000);
@@ -253,12 +261,14 @@ function updateDraftViewer(draftnid, drafteruid) {
 }
 
 function picksViewer(draftid, seatid, picknumber) {
-    jQuery('#pick-list-div').html('<h2>Getting Pick.</h2>');
-    var i = 0;
-    var text = "Getting Pick";
-    var refreshIntervalId = setInterval(function () {
-        jQuery('#pick-list-div').html('<h2>' + text + Array((++i % 4) + 1).join(".") + '</h2>');
-    }, 100);
+    if (jQuery('.pick-count-wrapper').html() != '0') {
+        jQuery('#pick-list-div').html('<h2>Getting Pick.</h2>');
+        var i = 0;
+        var text = "Getting Pick";
+        var refreshIntervalId = setInterval(function () {
+            jQuery('#pick-list-div').html('<h2>' + text + Array((++i % 4) + 1).join(".") + '</h2>');
+        }, 100);
+    }
 
     jQuery.ajax({
         type: "POST",
@@ -274,9 +284,11 @@ function picksViewer(draftid, seatid, picknumber) {
                 clearInterval(refreshIntervalId);
                 jQuery('#pick-list-div').html(data.content);
                 jQuery('.nid-' + data.picknid + ' img').addClass('picked-card');
-                jQuery('html, body').animate({
-                    scrollTop: jQuery("#pick-list-div").offset().top
-                }, 500);
+                if (jQuery('.view-draft-pack .item-list ul li')) {
+                    jQuery('html, body').animate({
+                        //scrollTop: jQuery("#picks-wrapper").offset().top
+                    }, 500);
+                }
             }
         },
         error: function (xmlhttp) {
@@ -294,11 +306,3 @@ function quoteComment(cid) {
         scrollTop: jQuery("#comment-form").offset().top
     }, 100);
 }
-
-
-
-
-
-
-
-
